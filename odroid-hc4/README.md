@@ -1,0 +1,1 @@
+# odroid-hc4-kernel-snap
