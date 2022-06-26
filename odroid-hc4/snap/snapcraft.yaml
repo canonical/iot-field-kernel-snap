@@ -89,8 +89,6 @@ parts:
           - gcc
       - else:
           - gcc-${SNAPCRAFT_ARCH_TRIPLET}
-    stage:
-      - -modules
 
   firmware:
     plugin: nil
