@@ -24,6 +24,8 @@ parts:
   # for the PCIE driver, so we have to compile the whole kernel.
   kernel:
     plugin: x-kernel
+    after: 
+      - firmware
     source: https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/focal
     source-branch: hwe-5.15
     source-depth: 1
