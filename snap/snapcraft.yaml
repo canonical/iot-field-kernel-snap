@@ -1,0 +1,16 @@
+name: pc-kernel
+base: core22
+version: '0.1'
+summary: Reference AMD64 kernel snap
+description: |
+  Base AMD64 kernel snap which currently just uses the standard pc-kernel snap
+  as a base.
+
+grade: stable
+confinement: strict
+
+parts:
+  pc-kernel:
+    plugin: nil
+    stage-snaps:
+      - pc-kernel
