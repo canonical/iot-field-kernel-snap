@@ -1,16 +1,152 @@
-name: iot-field-amd64-kernel
-base: core22
-version: '0.1'
-summary: Reference AMD64 kernel snap
+name: polarfire-kernel
+summary: A RISC-V 64-bit kernel for the Microchip Polarfire SoC Icecicle
 description: |
-  Base AMD64 kernel snap which currently just uses the standard pc-kernel snap
-  as a base.
+  A RISC-V 64-bit kernel for the Microchip Polarfire SoC Icecicle
+type: kernel
+build-base: core22
+adopt-info: kernel
 
-grade: stable
+architectures:
+  - build-on: [amd64, riscv64]
+    build-for: [riscv64]
+
 confinement: strict
 
+package-repositories:
+  - type: apt
+    ppa: snappy-dev/image
+  # Get the latest version of the riscv64 kernel. Note we can't use the ppa
+  # syntax here because snapcraft doesn't allow arch specifiers there.
+  - type: apt
+    url: https://ppa.launchpadcontent.net/canonical-kernel-team/ppa/ubuntu
+    architectures: [riscv64]
+    formats: [deb]
+    components: [main]
+    suites: [jammy]
+    key-id: 110E21D8B0E2A1F0243AF6820856F197B892ACEA
+    key-server: keyserver.ubuntu.com
+
 parts:
-  pc-kernel:
+  firmware:
     plugin: nil
-    stage-snaps:
-      - pc-kernel
+    stage-packages:
+      - linux-firmware
+      - wireless-regdb
+    organize:
+      lib/firmware: firmware
+    stage:
+      - -lib
+      - -usr
+      # Remove firmware files for things that will never be needed
+      - -firmware/mellanox
+      - -firmware/mrvl
+      - -firmware/qcom
+      - -firmware/netronome
+      - -firmware/intel
+      - -firmware/liquidio
+      - -firmware/i915
+      - -firmware/brcm
+      - -firmware/qed
+
+  kernel:
+    plugin: nil
+    stage-packages:
+      - linux-generic:${CRAFT_TARGET_ARCH}
+    override-build: |
+      craftctl default
+
+      KERNEL_VER="$(ls ${CRAFT_PART_INSTALL}/lib/modules)"
+      echo ${KERNEL_VER} > ${CRAFT_PART_INSTALL}/.kernel_ver
+
+      depmod -a -b ${CRAFT_PART_INSTALL} ${KERNEL_VER}
+
+      craftctl set version="$(apt info linux-generic:${CRAFT_TARGET_ARCH} | grep Version: | cut -f2 -d\ )"
+      craftctl set grade="stable"
+    stage:
+      - Image
+      - modules
+      - dtbs
+      - .kernel_ver
+    prime:
+      - modules
+    organize:
+      boot/vmlinuz-*: Image
+      lib/modules: modules
+      lib/firmware/*/device-tree: dtbs
+
+  # In order to support cross-compilation, we need to do a few tricks with
+  # downloading the initramfs package for the target arch
+  ubuntu-core-initramfs:
+    plugin: nil
+    override-pull: |
+      apt-get download ubuntu-core-initramfs:riscv64
+    override-build: |
+      dpkg -x ubuntu-core-initramfs*_riscv64.deb \
+        ${CRAFT_PART_INSTALL}
+
+      # Extra initrd modules
+      echo sdhci-cadence >> \
+        ${CRAFT_PART_INSTALL}/usr/lib/ubuntu-core-initramfs/modules/main/extra-modules.conf
+    organize:
+      usr/lib/ubuntu-core-initramfs: ubuntu-core-initramfs
+    prime:
+      - -*
+
+  initrd:
+    plugin: nil
+    after:
+      - kernel
+      - ubuntu-core-initramfs
+      - firmware
+    build-packages:
+      # Use the native package to actually build the initrd
+      - ubuntu-core-initramfs
+    override-build: |
+      KERNEL_VERSION=$(cat ${CRAFT_STAGE}/.kernel_ver)
+      ubuntu-core-initramfs create-initrd \
+        --kernelver=${KERNEL_VERSION} \
+        --kerneldir=${CRAFT_STAGE}/modules/${KERNEL_VERSION} \
+        --skeleton=${CRAFT_STAGE}/ubuntu-core-initramfs \
+        --firmwaredir=${CRAFT_STAGE}/firmware \
+        --output=${CRAFT_PART_INSTALL}/initrd.img
+    organize:
+      # Remove version suffix
+      initrd.img*: initrd.img
+    prime:
+      - -*
+
+  overlays:
+    after:
+      - kernel
+    plugin: nil
+    source: overlays
+    build-packages:
+      - device-tree-compiler
+    override-build: |
+      cp ${CRAFT_STAGE}/dtbs/microchip/mpfs-icicle-kit.dtb \
+        ${CRAFT_PART_BUILD}/
+      for f in ${CRAFT_PART_SRC}/*; do
+        dtc -I dts -O dtb $f -o ${CRAFT_PART_BUILD}/overlay.dtbo
+        fdtoverlay -i ${CRAFT_PART_BUILD}/mpfs-icicle-kit.dtb \
+          ${CRAFT_PART_BUILD}/overlay.dtbo \
+          -o ${CRAFT_PART_BUILD}/mpfs-icicle-kit.dtb
+      done
+      install -Dm0644 ${CRAFT_PART_BUILD}/mpfs-icicle-kit.dtb \
+        ${CRAFT_PART_INSTALL}/dtbs/microchip/mpfs-icicle-kit-overlay.dtb
+    prime:
+      - -*
+
+  fit-image:
+    after:
+      - kernel
+      - initrd
+      - overlays
+    plugin: nil
+    source: fit-image/
+    build-packages:
+      - u-boot-tools
+      - device-tree-compiler
+    override-build: |
+      mkimage \
+        -f ${CRAFT_PART_SRC}/fitImage-riscv64.its \
+        ${CRAFT_PART_INSTALL}/kernel.img
