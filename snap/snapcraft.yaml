@@ -31,6 +31,7 @@ parts:
     plugin: nil
     stage-packages:
       - linux-firmware
+      - nouveau-firmware
       - wireless-regdb
     organize:
       lib/firmware: firmware
