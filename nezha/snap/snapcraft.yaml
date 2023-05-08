@@ -116,32 +116,10 @@ parts:
     prime:
       - -*
 
-  overlays:
-    after:
-      - kernel
-    plugin: nil
-    source: overlays
-    build-packages:
-      - device-tree-compiler
-    override-build: |
-      cp ${CRAFT_STAGE}/dtbs/microchip/mpfs-icicle-kit.dtb \
-        ${CRAFT_PART_BUILD}/
-      for f in ${CRAFT_PART_SRC}/*; do
-        dtc -I dts -O dtb $f -o ${CRAFT_PART_BUILD}/overlay.dtbo
-        fdtoverlay -i ${CRAFT_PART_BUILD}/mpfs-icicle-kit.dtb \
-          ${CRAFT_PART_BUILD}/overlay.dtbo \
-          -o ${CRAFT_PART_BUILD}/mpfs-icicle-kit.dtb
-      done
-      install -Dm0644 ${CRAFT_PART_BUILD}/mpfs-icicle-kit.dtb \
-        ${CRAFT_PART_INSTALL}/dtbs/microchip/mpfs-icicle-kit-overlay.dtb
-    prime:
-      - -*
-
   fit-image:
     after:
       - kernel
       - initrd
-      - overlays
     plugin: nil
     source: fit-image/
     build-packages:
