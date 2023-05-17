@@ -63,4 +63,5 @@ jobs:
         with:
           build-info: true
           snapcraft-channel: latest/edge
+          snapcraft-args: --enable-experimental-plugins
         id: build-snap
