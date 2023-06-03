@@ -1,131 +1,225 @@
-name: polarfire-kernel
-summary: A RISC-V 64-bit kernel for the Microchip Polarfire SoC Icecicle
-description: |
-  A RISC-V 64-bit kernel for the Microchip Polarfire SoC Icecicle
-type: kernel
-build-base: core22
+name: nezha-kernel
 adopt-info: kernel
+summary: A Nezha board kernel for use with Ubuntu Core 22
+description: |
+  A Nezha board kernel for use with Ubuntu Core 22
+build-base: core22
+type: kernel
+
+grade: stable
+confinement: strict
 
 architectures:
-  - build-on: [amd64, riscv64]
+  - build-on:  [amd64, riscv64]
     build-for: [riscv64]
-
-confinement: strict
 
 package-repositories:
   - type: apt
-    ppa: snappy-dev/image
-  # Get the latest version of the riscv64 kernel. Note we can't use the ppa
-  # syntax here because snapcraft doesn't allow arch specifiers there.
-  - type: apt
-    url: https://ppa.launchpadcontent.net/canonical-kernel-team/ppa/ubuntu
-    architectures: [riscv64]
-    formats: [deb]
-    components: [main]
     suites: [jammy]
-    key-id: 110E21D8B0E2A1F0243AF6820856F197B892ACEA
-    key-server: keyserver.ubuntu.com
+    components: [main]
+    architectures: [riscv64]
+    key-id: 78E1918602959B9C59103100F1831DDAFC42E99D
+    url: http://ppa.launchpad.net/snappy-dev/image/ubuntu
 
 parts:
-  firmware:
-    plugin: nil
-    stage-packages:
-      - linux-firmware
-      - nouveau-firmware
-      - wireless-regdb
-    organize:
-      lib/firmware: firmware
-    stage:
-      - -lib
-      - -usr
-      # Remove firmware files for things that will never be needed
-      - -firmware/mellanox
-      - -firmware/mrvl
-      - -firmware/qcom
-      - -firmware/netronome
-      - -firmware/intel
-      - -firmware/liquidio
-      - -firmware/i915
-      - -firmware/brcm
-      - -firmware/qed
-
   kernel:
-    plugin: nil
+    after: [firmware]
+    plugin: kernel
+    source:
+      - to riscv64: https://git.launchpad.net/~canonical-kernel/ubuntu/+source/linux-riscv/+git/jammy
+    source-type: git
+    source-depth: 1
+    source-branch: allwinner-5.19-next
+    kernel-kconfigflavour: "allwinner"
+    kernel-with-firmware: false
+    kernel-compiler: ${CRAFT_ARCH_TRIPLET}-gcc
+    kernel-image-target:
+      riscv64: Image
+    kernel-initrd-compression: gz
+    kernel-initrd-stage-firmware: true
+    kernel-device-trees:
+      - allwinner/sun20i-d1-nezha
+      - allwinner/sun20i-d1-lichee-rv
+      - allwinner/sun20i-d1-lichee-rv-dock
+      - allwinner/sun20i-d1-lichee-rv-86-panel-480p
+      - allwinner/sun20i-d1-lichee-rv-86-panel-720p
+    kernel-kconfigs:
+      - CONFIG_DRM_AMDGPU=n
+      - CONFIG_DRM_ARCPGU=n
+      - CONFIG_DRM_BOCHS=n
+      - CONFIG_DRM_CIRRUS_QEMU=n
+      - CONFIG_DRM_GM12U320=n
+      - CONFIG_DRM_MGAG200=n
+      - CONFIG_DRM_MXSFB=n
+      - CONFIG_DRM_NOUVEAU=n
+      - CONFIG_DRM_QXL=n
+      - CONFIG_DRM_RADEON=n
+      - CONFIG_DRM_VIRTIO_GPU=n
+      - CONFIG_DRM_VKMS=n
+    kernel-initrd-modules:
+      - nls_iso8859-1
+      - 8723ds
+    build-packages:
+      - to riscv64:
+        - bison
+        - debhelper
+        - flex
+        - libssl-dev
+        - gcc-${CRAFT_ARCH_TRIPLET}
     stage-packages:
-      - linux-generic:${CRAFT_TARGET_ARCH}
+      - on riscv64:
+        - linux-image-allwinner:${CRAFT_TARGET_ARCH}
+        - linux-headers-allwinner:${CRAFT_TARGET_ARCH}
+    override-pull: |
+      [ "$(gcc -dumpmachine)" = "riscv64-linux-gnu" ] || {
+        # Fetch our sources and setup our environment
+        craftctl default
+
+        . debian/debian.env
+
+        deb_ver=$(dpkg-parsechangelog -l ${DEBIAN}/changelog -S version)
+        craftctl set version=local-${deb_ver}
+
+        fakeroot debian/rules clean
+
+        # Kernel plugin will error if this file does not exist
+        touch ${DEBIAN}/config/config.common.ports
+      }
+    override-build: |
+      [ "$(gcc -dumpmachine)" = "riscv64-linux-gnu" ] || {
+        craftctl default
+      }
+
+      ! [ "$(gcc -dumpmachine)" = "riscv64-linux-gnu" ] || {
+        # TODO: default behavior when native building
+        cp -arf lib/firmware/*/device-tree/allwinner ${CRAFT_PART_INSTALL}/dtbs
+        cp -af  boot/vmlinuz*                        ${CRAFT_PART_INSTALL}/vmlinuz
+        cp -af  lib/modules                          ${CRAFT_PART_INSTALL}/modules
+      }
+    organize:
+      kernel.img: vmlinuz
+    stage:
+      - dtbs
+      - modules
+      - vmlinuz
+      - initrd.img
+    prime:
+      - -*
+
+  firmware:
+    plugin: dump
+    source: https://git.launchpad.net/~canonical-kernel-snaps/+git/kernel-snaps-uc22
+    source-type: git
+    source-depth: 1
+    source-branch: main
+    stage-packages:
+      - linux-firmware:${CRAFT_TARGET_ARCH}
+      - wireless-regdb:${CRAFT_TARGET_ARCH}
     override-build: |
       craftctl default
-
-      KERNEL_VER="$(ls ${CRAFT_PART_INSTALL}/lib/modules)"
-      echo ${KERNEL_VER} > ${CRAFT_PART_INSTALL}/.kernel_ver
-
-      depmod -a -b ${CRAFT_PART_INSTALL} ${KERNEL_VER}
-
-      craftctl set version="$(apt info linux-generic:${CRAFT_TARGET_ARCH} | grep Version: | cut -f2 -d\ )"
-      craftctl set grade="stable"
+      ln -sf rtl8723d_config.bin \
+        ${CRAFT_PART_INSTALL}/lib/firmware/rtl_bt/rtl8723ds_config.bin
+      ln -sf rtl8723d_fw.bin \
+        ${CRAFT_PART_INSTALL}/lib/firmware/rtl_bt/rtl8723ds_fw.bin
+    organize:
+      lib/firmware: firmware/
     stage:
-      - Image
-      - modules
-      - dtbs
-      - .kernel_ver
-    prime:
-      - modules
-    organize:
-      boot/vmlinuz-*: Image
-      lib/modules: modules
-      lib/firmware/*/device-tree: dtbs
-
-  # In order to support cross-compilation, we need to do a few tricks with
-  # downloading the initramfs package for the target arch
-  ubuntu-core-initramfs:
-    plugin: nil
-    override-pull: |
-      apt-get download ubuntu-core-initramfs:riscv64
-    override-build: |
-      dpkg -x ubuntu-core-initramfs*_riscv64.deb \
-        ${CRAFT_PART_INSTALL}
-
-      # Extra initrd modules
-      echo sdhci-cadence >> \
-        ${CRAFT_PART_INSTALL}/usr/lib/ubuntu-core-initramfs/modules/main/extra-modules.conf
-    organize:
-      usr/lib/ubuntu-core-initramfs: ubuntu-core-initramfs
+      - firmware/
+      - trim-firmware
     prime:
       - -*
 
-  initrd:
+  # NOTE: WiFi is currently broken on the Nezha board.
+  # WiFi works fine on the Sipeed Lichee RV.
+  wlan-driver:
+    after: [kernel]
     plugin: nil
-    after:
-      - kernel
-      - ubuntu-core-initramfs
-      - firmware
+    source:
+      - to riscv64: "https://github.com/lwfinger/rtl8723ds.git"
+      - on riscv64: "https://git.launchpad.net/ubuntu/+source/licheerv-rtl8723ds-dkms"
+    source-type: git
+    source-depth: 1
+    build-environment:
+      - MAKEFLAGS: -j${CRAFT_PARALLEL_BUILD_COUNT}
+      - to riscv64:
+        - ARCH: riscv
+        - CC: ${CRAFT_ARCH_TRIPLET}-gcc-12
+        - CROSS_COMPILE: ${CRAFT_ARCH_TRIPLET}-
     build-packages:
-      # Use the native package to actually build the initrd
-      - ubuntu-core-initramfs
+      - make
+      - bc
+      - to riscv64:
+        - gcc-12-${CRAFT_ARCH_TRIPLET}
+        - binutils-${CRAFT_ARCH_TRIPLET}
+        - libc6-dev-${CRAFT_TARGET_ARCH}-cross
+      - on riscv64:
+        - gcc-12
+    override-pull: |
+      craftctl default
+
+      ! [ "$(gcc -dumpmachine)" = "riscv64-linux-gnu" ] || {
+        git checkout applied/ubuntu/jammy-updates
+      }
+
     override-build: |
-      KERNEL_VERSION=$(cat ${CRAFT_STAGE}/.kernel_ver)
-      ubuntu-core-initramfs create-initrd \
-        --kernelver=${KERNEL_VERSION} \
-        --kerneldir=${CRAFT_STAGE}/modules/${KERNEL_VERSION} \
-        --skeleton=${CRAFT_STAGE}/ubuntu-core-initramfs \
-        --firmwaredir=${CRAFT_STAGE}/firmware \
-        --output=${CRAFT_PART_INSTALL}/initrd.img
-    organize:
-      # Remove version suffix
-      initrd.img*: initrd.img
+      [ "$(gcc -dumpmachine)" = "riscv64-linux-gnu" ] || {
+        export KVER="$(basename ${CRAFT_STAGE}/modules/* | cut -f1 -d/)"
+        make KSRC=../../kernel/build modules
+      }
+
+      ! [ "$(gcc -dumpmachine)" = "riscv64-linux-gnu" ] || {
+        export KVER="$(basename ${CRAFT_STAGE}/modules/*-allwinner | cut -f1 -d/)"
+        make KSRC=${CRAFT_STAGE}/usr/src/linux-headers-${KVER} modules
+      }
+
+        install -Dm0644 ${CRAFT_PART_BUILD}/8723ds.ko \
+          -t ${CRAFT_PART_INSTALL}/modules/${KVER}/dkms/
     prime:
-      - -*
+      - modules
+      - -modules/*/dkms/8723ds.ko
+
+  depmod:
+    plugin: nil
+    after: [kernel, wlan-driver]
+    build-packages:
+      - kmod
+    override-prime: |
+      [ "$(gcc -dumpmachine)" = "riscv64-linux-gnu" ] || {
+        # Collect all kernel and separately built modules
+        KVER="$(basename ${CRAFT_STAGE}/modules/* | cut -f1 -d/)"
+        craftctl default
+
+        mkdir -p   lib
+        cp -arf ${CRAFT_STAGE}/modules  ./
+        cp -arf ${CRAFT_STAGE}/firmware ./
+
+        ln -sf  ../modules lib/modules
+
+        depmod -b   . ${KVER}
+
+        ${CRAFT_STAGE}/trim-firmware ${CRAFT_PRIME}
+      }
+
+      ! [ "$(gcc -dumpmachine)" = "riscv64-linux-gnu" ] || {
+        KVER="$(basename ${CRAFT_STAGE}/modules/*-allwinner | cut -f1 -d/)"
+        craftctl default
+        depmod -b . ${KVER}
+
+        cp -arf ${CRAFT_STAGE}/firmware ./
+        ${CRAFT_STAGE}/trim-firmware ${CRAFT_PRIME}
+      }
 
   fit-image:
-    after:
-      - kernel
-      - initrd
-    plugin: nil
+    after: [kernel]
+    plugin: dump
     source: fit-image/
     build-packages:
       - u-boot-tools
-      - device-tree-compiler
-    override-build: |
+    override-stage: |
+      craftctl default
+
       mkimage \
-        -f ${CRAFT_PART_SRC}/fitImage-riscv64.its \
-        ${CRAFT_PART_INSTALL}/kernel.img
+          -f kernel_${CRAFT_TARGET_ARCH}.its \
+          ${CRAFT_PRIME}/kernel.img
+    prime:
+      - -kernel_${CRAFT_TARGET_ARCH}.its
