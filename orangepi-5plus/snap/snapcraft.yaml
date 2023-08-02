@@ -21,9 +21,7 @@ parts:
     plugin: nil
     stage-snaps:
       - pc-kernel/22/stable
-    build-packages:
-      - yq
     override-build: |
       craftctl default
-      craftctl set version=$(yq '.version' ${CRAFT_PART_INSTALL}/snap.pc-kernel/manifest.yaml)
-      craftctl set grade=$(yq '.grade' ${CRAFT_PART_INSTALL}/snap.pc-kernel/manifest.yaml)
+      craftctl set version=$(grep '^version:' ${CRAFT_PART_INSTALL}/snap.pc-kernel/manifest.yaml | cut -f2 -d\ )
+      craftctl set grade=$(grep '^grade:' ${CRAFT_PART_INSTALL}/snap.pc-kernel/manifest.yaml | cut -f2 -d\ )
