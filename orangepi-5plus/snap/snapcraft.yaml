@@ -9,7 +9,6 @@ description: |
 
 adopt-info: kernel
 build-base: core22
-grade: stable
 confinement: strict
 type: kernel
 
@@ -22,3 +21,9 @@ parts:
     plugin: nil
     stage-snaps:
       - pc-kernel/22/stable
+    build-snaps:
+      - yq
+    override-build: |
+      craftctl default
+      craftctl set version=$(yq '.version' ${CRAFT_PART_INSTALL}/meta.pc-kernel/snap.yaml)
+      craftctl set grade=$(yq '.grade' ${CRAFT_PART_INSTALL}/meta.pc-kernel/snap.yaml)
