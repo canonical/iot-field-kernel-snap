@@ -25,3 +25,21 @@ parts:
       craftctl default
       craftctl set version=$(grep '^version:' ${CRAFT_PART_INSTALL}/snap.pc-kernel/manifest.yaml | cut -f2 -d\ )
       craftctl set grade=$(grep '^grade:' ${CRAFT_PART_INSTALL}/snap.pc-kernel/manifest.yaml | cut -f2 -d\ )
+    prime:
+      - -kernel.efi
+
+  kernel-image:
+    plugin: nil
+    after: [kernel]
+    build-packages:
+      - binutils
+    override-build: |
+      objcopy ${CRAFT_STAGE}/kernel.efi --dump-section linux=${CRAFT_PART_INSTALL}/kernel.img
+
+  initrd:
+    plugin: nil
+    after: [kernel]
+    build-packages:
+      - binutils
+    override-build: |
+      objcopy ${CRAFT_STAGE}/kernel.efi --dump-section initrd=${CRAFT_PART_INSTALL}/initrd.img
