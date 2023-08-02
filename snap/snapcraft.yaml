@@ -34,7 +34,7 @@ parts:
     build-packages:
       - binutils
     override-build: |
-      objcopy ${CRAFT_STAGE}/kernel.efi --dump-section linux=${CRAFT_PART_INSTALL}/kernel.img
+      objcopy ${CRAFT_STAGE}/kernel.efi --dump-section .linux=${CRAFT_PART_INSTALL}/kernel.img
 
   initrd:
     plugin: nil
@@ -42,4 +42,4 @@ parts:
     build-packages:
       - binutils
     override-build: |
-      objcopy ${CRAFT_STAGE}/kernel.efi --dump-section initrd=${CRAFT_PART_INSTALL}/initrd.img
+      objcopy ${CRAFT_STAGE}/kernel.efi --dump-section .initrd=${CRAFT_PART_INSTALL}/initrd.img
