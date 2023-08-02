@@ -42,8 +42,33 @@ parts:
     after: [kernel]
     build-packages:
       - binutils
+      - zstd
+      - cpio
     override-build: |
-      objcopy ${CRAFT_STAGE}/kernel.efi --dump-section .initrd=${CRAFT_PART_INSTALL}/initrd.img
+      objcopy ${CRAFT_STAGE}/kernel.efi --dump-section .initrd=${CRAFT_PART_BUILD}/initrd.img
+
+      # Need to add more modules
+      zstdcat ${CRAFT_PART_BUILD}/initrd.img | cpio -i
+      rm ${CRAFT_PART_BUILD}/initrd.img
+
+      for mod in \
+          i2c-meson \
+          meson-gx-mmc \
+          pwm-meson \
+          i2c-meson \
+          nls_iso8859-1 \
+          fixed \
+          gpio-regulator \
+          pci-meson \
+        ; do
+        MOD=$(find ${CRAFT_STAGE}/modules -name ${mod}.ko)
+        install -Dm0644 ${MOD} -t $(dirname ${CRAFT_PART_BUILD}/lib/modules/$(echo ${MOD} | sed 's;^${CRAFT_STAGE}/modules/;;'))
+      done
+
+      depmod -b ${CRAFT_PART_BUILD} $(basename $(ls ${CRAFT_PART_BUILD}/lib/modules))
+
+      # Recreate the initrd
+      find ${CRAFT_PART_BUILD} | cpio -o | zstd -vc > ${CRAFT_PART_INSTALL}/initrd.img
 
   dtb:
     plugin: nil
