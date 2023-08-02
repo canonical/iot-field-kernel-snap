@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-2.0
 # Copyright (C) 2023 Isaac True
 
-name: odroid-hc4-kernel
+name: iotdevice-odroid-hc4-kernel
 summary: A kernel for the ODROID HC4 platform for use with Ubuntu Core 22
 description: |
   A kernel for the ODROID HC4 platform for use with Ubuntu Core 22
