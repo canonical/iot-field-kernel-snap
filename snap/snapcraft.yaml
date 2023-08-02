@@ -27,6 +27,7 @@ parts:
       craftctl set grade=$(grep '^grade:' ${CRAFT_PART_INSTALL}/snap.pc-kernel/manifest.yaml | cut -f2 -d\ )
     prime:
       - -kernel.efi
+      - -firmware/*/device-tree
 
   kernel-image:
     plugin: nil
@@ -43,3 +44,10 @@ parts:
       - binutils
     override-build: |
       objcopy ${CRAFT_STAGE}/kernel.efi --dump-section .initrd=${CRAFT_PART_INSTALL}/initrd.img
+
+  dtb:
+    plugin: nil
+    after: [kernel]
+    override-build: |
+      install -Dm0644 ${CRAFT_STAGE}/firmware/*/device-tree/amlogic/meson-sm1-odroid-hc4.dtb \
+        -t ${CRAFT_PART_INSTALL}/dtbs
