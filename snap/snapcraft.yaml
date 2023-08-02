@@ -69,7 +69,7 @@ parts:
       depmod -b ${CRAFT_PART_BUILD} $(basename $(ls ${CRAFT_PART_BUILD}/lib/modules))
 
       # Recreate the initrd
-      find ./ | cpio -o | zstd -vc > ${CRAFT_PART_INSTALL}/initrd.img
+      find ./ | cpio -o -H newc | zstd -vc > ${CRAFT_PART_INSTALL}/initrd.img
 
   dtb:
     plugin: nil
