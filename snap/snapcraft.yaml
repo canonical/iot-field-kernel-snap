@@ -21,7 +21,7 @@ parts:
     plugin: nil
     stage-snaps:
       - pc-kernel/22/stable
-    build-snaps:
+    build-packages:
       - yq
     override-build: |
       craftctl default
