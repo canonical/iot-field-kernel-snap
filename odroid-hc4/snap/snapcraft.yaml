@@ -25,5 +25,5 @@ parts:
       - yq
     override-build: |
       craftctl default
-      craftctl set version=$(yq '.version' ${CRAFT_PART_INSTALL}/meta.pc-kernel/snap.yaml)
-      craftctl set grade=$(yq '.grade' ${CRAFT_PART_INSTALL}/meta.pc-kernel/snap.yaml)
+      craftctl set version=$(yq '.version' ${CRAFT_PART_INSTALL}/snap.pc-kernel/manifest.yaml)
+      craftctl set grade=$(yq '.grade' ${CRAFT_PART_INSTALL}/snap.pc-kernel/manifest.yaml)
