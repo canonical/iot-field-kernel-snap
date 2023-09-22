@@ -13,7 +13,9 @@ confinement: strict
 type: kernel
 
 architectures:
-  - build-on: [arm64]
+  - build-on:
+      - arm64
+      - amd64
     build-for: arm64
 
 parts:
