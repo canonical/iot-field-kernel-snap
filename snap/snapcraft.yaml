@@ -19,39 +19,63 @@ architectures:
 parts:
   kernel:
     plugin: nil
-    stage-snaps:
-      - pc-kernel/22/stable
+    stage-packages:
+      - linux-generic:${CRAFT_TARGET_ARCH}
     override-build: |
       craftctl default
-      craftctl set version=$(grep '^version:' ${CRAFT_PART_INSTALL}/snap.pc-kernel/manifest.yaml | cut -f2 -d\ )
-      craftctl set grade=$(grep '^grade:' ${CRAFT_PART_INSTALL}/snap.pc-kernel/manifest.yaml | cut -f2 -d\ )
+      KERNEL_VER="$(basename ${CRAFT_PART_INSTALL}/boot/vmlinuz-* | cut -f2- -d-)"
+      craftctl set version="${KERNEL_VER}"
+      craftctl set grade="stable"
+      echo "${KERNEL_VER}" > "${CRAFT_PART_INSTALL}/.kernel_ver"
+
+      depmod -a -b "${CRAFT_PART_INSTALL}" "${KERNEL_VER}"
+    organize:
+      "boot/vmlinuz-*": kernel.img
+      "lib/modules": modules
+      "lib/firmware/*/device-tree/amlogic": dtbs
+    stage:
+      - kernel.img
+      - dtbs
+      - modules
+      - .kernel_ver
     prime:
-      - -kernel.efi
-      - -firmware/*/device-tree
+      - kernel.img
+      - dtbs
+      - modules
 
-  kernel-image:
+  firmware:
     plugin: nil
-    after: [kernel]
-    build-packages:
-      - binutils
-    override-build: |
-      objcopy ${CRAFT_STAGE}/kernel.efi --dump-section .linux=${CRAFT_PART_INSTALL}/kernel.img
+    stage-packages:
+      - linux-firmware
+    organize:
+      "lib/firmware": firmware
+    prime:
+      - firmware
+      # Remove large unneeded firmware files
+      - -firmware/mellanox
+      - -firmware/mrvl
+      - -firmware/amdgpu
+      - -firmware/qcom
+      - -firmware/netronome
+      - -firmware/intel
+      - -firmware/i915
+      - -firmware/mediatek
+      - -firmware/qed
+      - -firmware/liquidio
+      - -firmware/dpaa2
+      - -firmware/radeon
 
-  initrd:
+  # In order to support cross-compilation, we need to do a few tricks with
+  # downloading the initramfs package for the target arch
+  ubuntu-core-initramfs:
     plugin: nil
-    after: [kernel]
-    build-packages:
-      - binutils
-      - zstd
-      - cpio
-      - kmod
+    override-pull: |
+      apt-get download ubuntu-core-initramfs:riscv64
     override-build: |
-      objcopy ${CRAFT_STAGE}/kernel.efi --dump-section .initrd=${CRAFT_PART_BUILD}/initrd.img
+      dpkg -x ubuntu-core-initramfs*_riscv64.deb \
+        ${CRAFT_PART_INSTALL}
 
-      # Need to add more modules
-      zstdcat ${CRAFT_PART_BUILD}/initrd.img | cpio -i
-      rm ${CRAFT_PART_BUILD}/initrd.img
-
+      # Extra initrd modules
       for mod in \
           i2c-meson \
           meson-gx-mmc \
@@ -62,18 +86,33 @@ parts:
           gpio-regulator \
           pci-meson \
         ; do
-        MOD=$(find ${CRAFT_STAGE}/modules -name ${mod}.ko)
-        install -Dm0644 ${MOD} -t $(dirname ${CRAFT_PART_BUILD}/lib/modules/$(echo ${MOD} | sed 's;^${CRAFT_STAGE}/modules/;;'))
+        echo ${mod} >> \
+          ${CRAFT_PART_INSTALL}/usr/lib/ubuntu-core-initramfs/modules/main/extra-modules.conf
       done
+    organize:
+      usr/lib/ubuntu-core-initramfs: ubuntu-core-initramfs
+    prime:
+      - -*
 
-      depmod -b ${CRAFT_PART_BUILD} $(basename $(ls ${CRAFT_PART_BUILD}/lib/modules))
-
-      # Recreate the initrd
-      find ./ | cpio -o -H newc | zstd -vc > ${CRAFT_PART_INSTALL}/initrd.img
-
-  dtb:
+  initrd:
     plugin: nil
-    after: [kernel]
+    after:
+      - kernel
+      - ubuntu-core-initramfs
+      - firmware
+    build-packages:
+      # Use the native package to actually build the initrd
+      - ubuntu-core-initramfs
     override-build: |
-      install -Dm0644 ${CRAFT_STAGE}/firmware/*/device-tree/amlogic/meson-sm1-odroid-hc4.dtb \
-        -t ${CRAFT_PART_INSTALL}/dtbs
+      KERNEL_VERSION=$(cat ${CRAFT_STAGE}/.kernel_ver)
+      ubuntu-core-initramfs create-initrd \
+        --kernelver=${KERNEL_VERSION} \
+        --kerneldir=${CRAFT_STAGE}/modules/${KERNEL_VERSION} \
+        --skeleton=${CRAFT_STAGE}/ubuntu-core-initramfs \
+        --firmwaredir=${CRAFT_STAGE}/firmware \
+        --output=${CRAFT_PART_INSTALL}/initrd.img
+    organize:
+      # Remove version suffix
+      initrd.img*: initrd.img
+    prime:
+      - -*
