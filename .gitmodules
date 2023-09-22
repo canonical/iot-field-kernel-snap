@@ -1,3 +1,0 @@
-[submodule "snap/plugins"]
-	path = snap/plugins
-	url = https://github.com/kubiko/snapcraft-kernel-plugin.git
