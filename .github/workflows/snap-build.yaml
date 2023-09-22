@@ -1,0 +1,34 @@
+name: Snap Builds CI
+
+on:
+  schedule:
+    - cron: '0 12 1 * *'
+  workflow_dispatch: {}
+  pull_request: {}
+
+jobs:
+  build_snap:
+    name: Build job for the kernel snap
+    runs-on: ubuntu-22.04
+    outputs:
+      snap-file: ${{ steps.build.outputs.snap }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Build
+        uses: snapcore/action-build@v1
+        env:
+          MODEL_APIKEY: "${{ secrets.POLARFIRE_MODEL_APIKEY }}"
+          MODEL_APIURL: "${{ secrets.MODEL_APIURL }}"
+        with:
+          build-info: true
+          snapcraft-channel: 7.x/stable
+          ua-token: ${{ secrets.UA_TOKEN }}
+        id: build
+      - name: Publish
+        uses: snapcore/action-publish@v1
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.IOTFIELD_STORE_CREDS }}
+        with:
+          snap: ${{ steps.build.outputs.snap }}
+          release: latest/edge
