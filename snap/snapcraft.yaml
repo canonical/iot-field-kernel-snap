@@ -1,0 +1,131 @@
+name: visionfive2-kernel
+adopt-info: kernel
+type: kernel
+build-base: core22
+summary: A StarFive VisionFive 2 board kernel for use with Ubuntu Core 22
+description: |
+  A StarFive VisionFive 2 board kernel for use with Ubuntu Core 22
+
+contact: dilyn.corner@canonical.com
+issues: https://github.com/canonical/iot-field-kernel-snap/issues
+license: GPL-2.0
+source-code: https://github.com/canonical/iot-field-kernel-snap/tree/22-riscv64-visionfive2
+website: https://dilyn.cc
+
+grade: stable
+confinement: strict
+
+architectures:
+  - build-on:  [amd64, riscv64]
+    build-for: [riscv64]
+
+package-repositories:
+  - type: apt
+    suites: [jammy]
+    components: [main]
+    architectures: [amd64, riscv64]
+    key-id: 78E1918602959B9C59103100F1831DDAFC42E99D
+    url: http://ppa.launchpad.net/snappy-dev/image/ubuntu
+    # TODO: use the official kernel once better USB/PCIe support has landed
+  - type: apt
+    suites: [jammy]
+    components: [main]
+    architectures: [riscv64]
+    key-id: C5B75CD85D1916F42DF92023F0A7B59173223CBB
+    url: https://ppa.launchpadcontent.net/esmil/ppa/ubuntu 
+
+parts:
+  firmware:
+    plugin: dump
+    source: https://git.launchpad.net/~canonical-kernel-snaps/+git/kernel-snaps-uc22
+    source-type: git
+    source-depth: 1
+    source-branch: main
+    stage-packages:
+      - linux-firmware:${CRAFT_TARGET_ARCH}
+      - wireless-regdb
+    organize:
+      lib/firmware: firmware/
+    prime:
+      - firmware/
+
+  kernel:
+    after: [firmware]
+    plugin: nil
+    stage-packages:
+      - linux-starfive:${CRAFT_TARGET_ARCH}
+    override-build: |
+      craftctl default
+
+      KERNEL_VER="$(ls ${CRAFT_PART_INSTALL}/lib/modules)"
+      echo ${KERNEL_VER} > ${CRAFT_PART_INSTALL}/.kernel_ver
+
+      # Generate all the module files required for ubuntu-core-initramfs
+      depmod -ab "${CRAFT_PART_INSTALL}" "${KERNEL_VER}"
+
+      craftctl set version="$(apt info linux-image-starfive:${CRAFT_TARGET_ARCH} | grep Version: | cut -f2 -d\ )"
+    organize:
+      boot/config-*: config
+      boot/vmlinuz-*: vmlinuz
+      boot/System.map-*: System.map
+      lib/modules/: modules/
+      lib/firmware/*/device-tree/: dtbs/
+    stage:
+      - dtbs
+      - modules
+      - vmlinuz
+      - .kernel_ver
+    override-prime: |
+      craftctl default
+      "${CRAFT_STAGE}/trim-firmware" "${CRAFT_PRIME}"
+    prime:
+      - modules
+
+  ubuntu-core-initramfs:
+    plugin: nil
+    override-pull: |
+      apt-get download ubuntu-core-initramfs:${CRAFT_TARGET_ARCH}
+    override-build: |
+      dpkg -x ubuntu-core-initramfs*_${CRAFT_TARGET_ARCH}.deb \
+        "${CRAFT_PART_INSTALL}"
+
+      # Extra initrd modules
+      # echo sdhci-cadence >> \
+        # "${CRAFT_PART_INSTALL}/usr/lib/ubuntu-core-initramfs/modules/main/extra-modules.conf"
+    organize:
+      usr/lib/ubuntu-core-initramfs: ubuntu-core-initramfs
+    prime:
+      - -*
+
+  initrd:
+    plugin: nil
+    after: [kernel, ubuntu-core-initramfs, firmware]
+    build-packages: [ubuntu-core-initramfs]
+    override-build: |
+      KERNEL_VERSION="$(cat ${CRAFT_STAGE}/.kernel_ver)"
+      ubuntu-core-initramfs create-initrd \
+        --kernelver="${KERNEL_VERSION}" \
+        --kerneldir="${CRAFT_STAGE}/modules/${KERNEL_VERSION}" \
+        --skeleton="${CRAFT_STAGE}/ubuntu-core-initramfs" \
+        --firmwaredir="${CRAFT_STAGE}/firmware" \
+        --output="${CRAFT_PART_INSTALL}/initrd.img"
+    organize:
+      initrd.img*: initrd.img
+    prime:
+      - -*
+
+  fit-image:
+    after: [kernel, initrd]
+    plugin: dump
+    source: fit-image/
+    build-packages:
+      - device-tree-compiler
+      - u-boot-tools
+    override-stage: |
+      craftctl default
+
+      mkimage \
+          -f fitImage-${CRAFT_TARGET_ARCH}.its \
+          ${CRAFT_PRIME}/kernel.img
+    prime:
+      - -fitImage-${CRAFT_TARGET_ARCH}.its
