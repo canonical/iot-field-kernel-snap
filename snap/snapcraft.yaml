@@ -2,10 +2,10 @@
 # SPDX-License-Identifier: GPL-2.0
 # Copyright (C) 2023 Isaac True
 
-name: odroid-hc4-kernel
-summary: A kernel for the ODROID HC4 platform for use with Ubuntu Core 22
+name: orange-pi-5plus-kernel
+summary: A kernel for the Orange Pi 5+ for use with Ubuntu Core 22
 description: |
-  A kernel for the ODROID HC4 platform for use with Ubuntu Core 22
+  A kernel for the Orange Pi 5+ for use with Ubuntu Core 22
 
 adopt-info: kernel
 build-base: core22
@@ -13,77 +13,123 @@ confinement: strict
 type: kernel
 
 architectures:
-  - build-on: [arm64]
+  - build-on:
+      - arm64
+      - amd64
     build-for: arm64
+
+package-repositories:
+  - type: apt
+    url: http://ppa.launchpad.net/snappy-dev/image/ubuntu
+    architectures: ["${CRAFT_TARGET_ARCH}",]
+    key-server: keyserver.ubuntu.com
+    key-id: 78E1918602959B9C59103100F1831DDAFC42E99D
+    formats: [deb,]
+    components: [main,]
+    suites: [jammy,]
+  - type: apt
+    url: https://ppa.launchpadcontent.net/itrue/orangepi/ubuntu
+    architectures: ["${CRAFT_TARGET_ARCH}",]
+    key-server: keyserver.ubuntu.com
+    key-id: FDC51455B3F8767957F2AA1E831081403F1C01F6
+    formats: [deb,]
+    components: [main,]
+    suites: [jammy,]
 
 parts:
   kernel:
     plugin: nil
-    stage-packages:
-      - linux-generic:${CRAFT_TARGET_ARCH}
+    source: https://git.launchpad.net/~itrue/+git/linux-rockchip
+    source-depth: 1
+    source-type: git
+    source-branch: master
+    build-packages:
+      - fakeroot
+      - build-essential
+      - bison
+      - libssl-dev
+      - flex
+      - ccache
+    build-environment:
+      - PATH: "/usr/lib/ccache:${PATH}"
+      - CROSS_COMPILE: "${CRAFT_ARCH_TRIPLET}-"
+      - ARCH: "${CRAFT_TARGET_ARCH}"
+      - INSTALL_MOD_PATH: "${CRAFT_PART_INSTALL}"
+      - INSTALL_MOD_STRIP: "1"
+      - INSTALL_DTBS_PATH: "${CRAFT_PART_INSTALL}/dtbs"
+      - LANG: "C"
     override-build: |
-      craftctl default
-      craftctl set version="$(apt info linux-generic:${CRAFT_TARGET_ARCH} | grep Version: | cut -f2 -d\ )""
-      craftctl set grade="stable"
-      KERNEL_VER="$(basename ${CRAFT_PART_INSTALL}/boot/vmlinuz-* | cut -f2- -d-)"
-      echo "${KERNEL_VER}" > "${CRAFT_PART_INSTALL}/.kernel_ver"
-      depmod -a -b "${CRAFT_PART_INSTALL}" "${KERNEL_VER}"
+      ./debian/scripts/misc/annotations -e --arch ${CRAFT_TARGET_ARCH} \
+        --flavour rockchip > .config
+
+      make -j $(nproc) oldconfig
+
+      ./scripts/config --set-str CONFIG_SYSTEM_TRUSTED_KEYS ""
+      ./scripts/config --set-str CONFIG_SYSTEM_REVOCATION_KEYS ""
+
+      make -j $(nproc) oldconfig
+
+      make -j $(nproc)
+      make -j $(nproc) modules_install
+      make -j $(nproc) dtbs_install
+      cp arch/"${CRAFT_TARGET_ARCH}"/boot/Image "${CRAFT_PART_INSTALL}"/
+
+      KVER="$(head -n1 debian.rockchip/changelog | grep -Eo '\(.*\)' |  tr -d '()')"
+      craftctl set version="${KVER}"
+      craftctl set grade="devel"
     organize:
-      "boot/vmlinuz-*": kernel.img
-      "lib/modules": modules
-      "lib/firmware/*/device-tree/amlogic": dtbs
+      lib/modules: modules
     stage:
-      - kernel.img
+      - Image
       - dtbs
       - modules
-      - .kernel_ver
     prime:
-      - kernel.img
-      - dtbs
       - modules
 
   firmware:
     plugin: nil
+    source: https://github.com/orangepi-xunlong/firmware.git
+    source-type: git
+    source-depth: 1
     stage-packages:
       - linux-firmware
-    organize:
-      "lib/firmware": firmware
+    override-build: |
+      craftctl default
+      # Overwrite any firmware files from OPi with the ones from linux-firmware
+      # Need to do this here rather than in organize because it doesn't like
+      # merging paths
+      mkdir -p "${CRAFT_PART_INSTALL}/firmware"
+      cp -r "${CRAFT_PART_SRC}/"* "${CRAFT_PART_INSTALL}/firmware"
+      cp -r "${CRAFT_PART_INSTALL}/lib/firmware/"* \
+        "${CRAFT_PART_INSTALL}/firmware/"
+      rm -rf "${CRAFT_PART_INSTALL}/firmware/lib"
+    stage:
+      - firmware
     prime:
       - firmware
-      # Remove large unneeded firmware files
-      - -firmware/mellanox
-      - -firmware/mrvl
-      - -firmware/amdgpu
-      - -firmware/qcom
-      - -firmware/netronome
-      - -firmware/intel
-      - -firmware/i915
-      - -firmware/mediatek
-      - -firmware/qed
-      - -firmware/liquidio
-      - -firmware/dpaa2
-      - -firmware/radeon
 
   # In order to support cross-compilation, we need to do a few tricks with
   # downloading the initramfs package for the target arch
   ubuntu-core-initramfs:
     plugin: nil
     override-pull: |
-      apt-get download ubuntu-core-initramfs:riscv64
+      apt-get download ubuntu-core-initramfs:${CRAFT_TARGET_ARCH}
     override-build: |
-      dpkg -x ubuntu-core-initramfs*_riscv64.deb \
+      dpkg -x ubuntu-core-initramfs*_${CRAFT_TARGET_ARCH}.deb \
         ${CRAFT_PART_INSTALL}
 
       # Extra initrd modules
       for mod in \
-          i2c-meson \
-          meson-gx-mmc \
-          pwm-meson \
-          i2c-meson \
-          nls_iso8859-1 \
+          dw_mmc-rockchip \
+          sdhci-of-dwcmshc \
+          gpio-rockchip \
+          spi-rockchip \
+          rk8xx-spi \
+          rk805-pwrkey \
+          rk808-regulator \
+          pinctrl-rk805 \
           fixed \
-          gpio-regulator \
-          pci-meson \
+          pl330 \
         ; do
         echo ${mod} >> \
           ${CRAFT_PART_INSTALL}/usr/lib/ubuntu-core-initramfs/modules/main/extra-modules.conf
@@ -103,7 +149,7 @@ parts:
       # Use the native package to actually build the initrd
       - ubuntu-core-initramfs
     override-build: |
-      KERNEL_VERSION=$(cat ${CRAFT_STAGE}/.kernel_ver)
+      KERNEL_VERSION=$(basename ${CRAFT_STAGE}/modules/*)
       ubuntu-core-initramfs create-initrd \
         --kernelver=${KERNEL_VERSION} \
         --kerneldir=${CRAFT_STAGE}/modules/${KERNEL_VERSION} \
@@ -115,3 +161,17 @@ parts:
       initrd.img*: initrd.img
     prime:
       - -*
+
+  fit-image:
+    after:
+      - kernel
+      - initrd
+    plugin: nil
+    source: fit-image/
+    build-packages:
+      - u-boot-tools
+      - device-tree-compiler
+    override-build: |
+      mkimage \
+        -f ${CRAFT_PART_SRC}/kernel_${CRAFT_TARGET_ARCH}.its \
+        ${CRAFT_PART_INSTALL}/kernel.img
