@@ -50,6 +50,8 @@ parts:
       - libssl-dev
       - flex
       - ccache
+      - bc
+      - pahole
     build-environment:
       - PATH: "/usr/lib/ccache:${PATH}"
       - CROSS_COMPILE: "${CRAFT_ARCH_TRIPLET}-"
