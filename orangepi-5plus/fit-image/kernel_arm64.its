@@ -1,0 +1,65 @@
+/*
+ * U-Boot uImage source file with multiple kernels, ramdisks and FDT blobs
+ */
+
+/dts-v1/;
+
+/ {
+	description = "Ubuntu Core kernel, ramdisk and FDT blobs for Orange Pi 5+";
+	#address-cells = <1>;
+
+	images {
+		kernel-ubuntu {
+			description = "ubuntu-kernel";
+			data = /incbin/("../../../stage/Image");
+			type = "kernel";
+			arch = "arm64";
+			os = "linux";
+			compression = "none";
+			load =  <0x80000000>;
+			entry = <0x80000000>;
+
+			hash-1 {
+				algo = "sha256";
+			};
+		};
+
+		ramdisk-uc {
+			description = "Ubuntu-Core-ramdisk";
+			data = /incbin/("../../../stage/initrd.img");
+			type = "ramdisk";
+			arch = "arm64";
+			os = "linux";
+			compression = "none";
+			load =  <0x90000000>;
+
+			hash-1 {
+				algo = "sha256";
+			};
+		};
+
+		fdt-rk3588-orangepi-5-plus {
+			description = "Orange Pi 5+";
+			data = /incbin/("../../../stage/dtbs/rockchip/rk3588-orangepi-5-plus.dtb");
+			type = "flat_dt";
+			arch = "arm64";
+			compression = "none";
+			load =  <0x8F000000>;
+
+			hash-1 {
+				algo = "sha256";
+			};
+		};
+	};
+
+	configurations {
+		default = "rk3588-orangepi-5-plus";
+
+		rk3588-orangepi-5-plus {
+			description = "Orange Pi 5+";
+			kernel = "kernel-ubuntu";
+			ramdisk = "ramdisk-uc";
+			fdt = "fdt-rk3588-orangepi-5-plus";
+		};
+	};
+};
