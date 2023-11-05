@@ -48,6 +48,7 @@ parts:
       - build-essential
       - bison
       - libssl-dev
+      - libelf-dev
       - flex
       - ccache
       - bc
