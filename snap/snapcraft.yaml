@@ -107,8 +107,6 @@ parts:
         echo ${mod} >> \
           ${CRAFT_PART_INSTALL}/usr/lib/ubuntu-core-initramfs/modules/main/extra-modules.conf
       done
-    organize:
-      usr/lib/ubuntu-core-initramfs: ubuntu-core-initramfs
     prime:
       - -*
 
@@ -127,7 +125,6 @@ parts:
         --root="${CRAFT_STAGE}" \
         --kernelver=${KERNEL_VERSION} \
         --kerneldir=modules/${KERNEL_VERSION} \
-        --skeleton=ubuntu-core-initramfs \
         --firmwaredir=firmware \
         --output="${CRAFT_PART_INSTALL}"/initrd.img
     organize:
