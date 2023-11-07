@@ -13,7 +13,7 @@ confinement: strict
 type: kernel
 
 architectures:
-  - build-on: arm64
+  - build-on: amd64
     build-for: arm64
 
 package-repositories:
@@ -37,15 +37,47 @@ package-repositories:
 parts:
   kernel:
     plugin: nil
+    source: https://git.launchpad.net/~itrue/+git/linux-rockchip
+    source-depth: 1
+    source-type: git
+    source-branch: master
     build-packages:
-      - kmod
-    stage-packages:
-      - linux-rockchip:${CRAFT_TARGET_ARCH}
+      - fakeroot
+      - build-essential
+      - bison
+      - libssl-dev
+      - libelf-dev
+      - flex
+      - ccache
+      - bc
+      - pahole
+    build-environment:
+      - PATH: "/usr/lib/ccache:${PATH}"
+      - CROSS_COMPILE: "${CRAFT_ARCH_TRIPLET}-"
+      - ARCH: "${CRAFT_TARGET_ARCH}"
+      - INSTALL_MOD_PATH: "${CRAFT_PART_INSTALL}"
+      - INSTALL_MOD_STRIP: "1"
+      - INSTALL_DTBS_PATH: "${CRAFT_PART_INSTALL}/dtbs"
+      - LANG: "C"
     override-build: |
-      craftctl default
-      craftctl set version="$(apt-cache show linux-rockchip:${CRAFT_TARGET_ARCH} | grep '^Version:' | cut -f2 -d\ )"
-      craftctl set grade="devel"
-      depmod -v -a -b "${CRAFT_PART_INSTALL}" "$(basename ${CRAFT_PART_INSTALL}/lib/modules/*)"
+      ./debian/scripts/misc/annotations -e --arch ${CRAFT_TARGET_ARCH} \
+        --flavour rockchip > .config
+
+      make -j $(nproc) oldconfig
+
+      ./scripts/config --set-str CONFIG_SYSTEM_TRUSTED_KEYS ""
+      ./scripts/config --set-str CONFIG_SYSTEM_REVOCATION_KEYS ""
+      ./scripts/config --disable CONFIG_DEBUG_INFO
+
+      make -j $(nproc) oldconfig
+
+      make -j $(nproc) Image.gz modules dtbs
+      make -j $(nproc) modules_install
+      make -j $(nproc) dtbs_install
+      cp arch/"${CRAFT_TARGET_ARCH}"/boot/Image.gz "${CRAFT_PART_INSTALL}"/Image
+
+      KVER="$(head -n1 debian.rockchip/changelog | grep -Eo '\(.*\)' |  tr -d '()')"
+      craftctl set version="${KVER}"
     organize:
       "boot/vmlinuz-*": Image
       "lib/modules": modules
