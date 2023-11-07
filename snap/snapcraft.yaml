@@ -139,6 +139,8 @@ parts:
         echo ${mod} >> \
           ${CRAFT_PART_INSTALL}/usr/lib/ubuntu-core-initramfs/modules/main/extra-modules.conf
       done
+    stage-packages:
+      - snapd:${CRAFT_TARGET_ARCH}
     prime:
       - -*
 
