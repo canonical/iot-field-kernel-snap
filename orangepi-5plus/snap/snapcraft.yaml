@@ -48,9 +48,8 @@ parts:
       craftctl set version="$(apt-cache show linux-rockchip:${CRAFT_TARGET_ARCH} | grep '^Version:' | cut -f2 -d\ )"
       craftctl set grade="devel"
       depmod -a -b "${CRAFT_PART_INSTALL}" "$(basename ${CRAFT_PART_INSTALL}/lib/modules/*)"
-      # Decompress the image
-      gzip -cd < boot/vmlinuz-* > "${CRAFT_PART_INSTALL}"/Image
     organize:
+      "boot/vmlinuz-*": Image
       "lib/modules": modules
       "lib/firmware/*/device-tree": dtbs
     stage:
