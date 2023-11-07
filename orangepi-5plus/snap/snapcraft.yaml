@@ -122,13 +122,14 @@ parts:
       # Use the native package to actually build the initrd
       - ubuntu-core-initramfs
     override-build: |
-      KERNEL_VERSION=$(basename ${CRAFT_STAGE}/modules/*)
+      KERNEL_VERSION=$(basename "${CRAFT_STAGE}"/modules/*)
       ubuntu-core-initramfs create-initrd \
+        --root="${CRAFT_STAGE}"
         --kernelver=${KERNEL_VERSION} \
-        --kerneldir=${CRAFT_STAGE}/modules/${KERNEL_VERSION} \
-        --skeleton=${CRAFT_STAGE}/ubuntu-core-initramfs \
-        --firmwaredir=${CRAFT_STAGE}/firmware \
-        --output=${CRAFT_PART_INSTALL}/initrd.img
+        --kerneldir=modules/${KERNEL_VERSION} \
+        --skeleton=ubuntu-core-initramfs \
+        --firmwaredir=firmware \
+        --output="${CRAFT_PART_INSTALL}"/initrd.img
     organize:
       # Remove version suffix
       initrd.img*: initrd.img
