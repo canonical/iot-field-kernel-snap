@@ -49,7 +49,7 @@ parts:
       craftctl set grade="devel"
       depmod -a -b "${CRAFT_PART_INSTALL}" "$(basename ${CRAFT_PART_INSTALL}/lib/modules/*)"
       # Decompress the image
-      gzip -cd < boot/vmlinuz-* > "${CRAFT_PART_INSTALL}"/Image
+      gzip -cd < "${CRAFT_PART_INSTALL}"/boot/vmlinuz-* > "${CRAFT_PART_INSTALL}"/Image
     organize:
       "lib/modules": modules
       "lib/firmware/*/device-tree": dtbs
