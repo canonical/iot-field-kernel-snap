@@ -101,6 +101,8 @@ parts:
           pinctrl-rk805 \
           fixed \
           pl330 \
+          phy-rockchip-naneng-combphy \
+          r8169 \
         ; do
         echo ${mod} >> \
           ${CRAFT_PART_INSTALL}/usr/lib/ubuntu-core-initramfs/modules/main/extra-modules.conf
