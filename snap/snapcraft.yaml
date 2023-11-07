@@ -124,7 +124,7 @@ parts:
     override-build: |
       KERNEL_VERSION=$(basename "${CRAFT_STAGE}"/modules/*)
       ubuntu-core-initramfs create-initrd \
-        --root="${CRAFT_STAGE}"
+        --root="${CRAFT_STAGE}" \
         --kernelver=${KERNEL_VERSION} \
         --kerneldir=modules/${KERNEL_VERSION} \
         --skeleton=ubuntu-core-initramfs \
