@@ -65,8 +65,11 @@ parts:
       ./debian/scripts/misc/annotations -e --arch ${CRAFT_TARGET_ARCH} \
         --flavour rockchip > .config
 
+      make -j $(nproc) oldconfig
+
       ./scripts/config --set-str CONFIG_SYSTEM_TRUSTED_KEYS ""
       ./scripts/config --set-str CONFIG_SYSTEM_REVOCATION_KEYS ""
+      ./scripts/config --disable CONFIG_DEBUG_INFO
 
       make -j $(nproc) oldconfig
 
@@ -75,7 +78,7 @@ parts:
       make -j $(nproc) dtbs_install
       cp arch/"${CRAFT_TARGET_ARCH}"/boot/Image.gz "${CRAFT_PART_INSTALL}"/Image
 
-      KVER="$(basename "${INSTALL_MOD_PATH}"/lib/modules/*)"
+      KVER="$(head -n1 debian.rockchip/changelog | grep -Eo '\(.*\)' |  tr -d '()')"
       craftctl set version="${KVER}"
     organize:
       "boot/vmlinuz-*": Image
