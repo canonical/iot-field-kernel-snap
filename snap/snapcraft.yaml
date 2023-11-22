@@ -38,6 +38,7 @@ parts:
   kernel:
     plugin: nil
     build-packages:
+      - parallel
       - kmod
     stage-packages:
       - linux-generic-wip:${CRAFT_TARGET_ARCH}
@@ -47,9 +48,8 @@ parts:
       craftctl set grade="devel"
 
       # Make sure all modules are uncompressed
-      for f in $(find "${CRAFT_PART_INSTALL}/lib/modules" -name \*.ko.zst); do
-        zstd --rm -d "${f}"
-      done
+      find "${CRAFT_PART_INSTALL}/lib/modules" -name \*.ko.zst | \
+        parallel zstd --rm -d {}
 
       depmod -a -b "${CRAFT_PART_INSTALL}" "$(basename ${CRAFT_PART_INSTALL}/lib/modules/*)"
     organize:
