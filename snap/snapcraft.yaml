@@ -81,6 +81,7 @@ parts:
     source-depth: 1
     stage-packages:
       - linux-firmware
+      - wireless-regdb
     override-build: |
       craftctl default
       # Overwrite any firmware files from OPi with the ones from linux-firmware
