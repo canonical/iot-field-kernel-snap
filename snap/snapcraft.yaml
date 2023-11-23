@@ -40,6 +40,7 @@ parts:
     build-packages:
       - parallel
       - kmod
+      - device-tree-compiler
     stage-packages:
       - linux-generic-wip:${CRAFT_TARGET_ARCH}
     override-build: |
@@ -50,6 +51,16 @@ parts:
       # Make sure all modules are uncompressed
       find "${CRAFT_PART_INSTALL}/lib/modules" -name \*.ko.zst | \
         parallel zstd --rm -d {}
+
+      # Disable the USB host controllers as they cause the device to hang
+      fdtput "${CRAFT_PART_INSTALL}"/lib/firmware/*/device-tree/rockchip/rk3588-orangepi-5-plus.dtb \
+        -t s /usb@fc800000 status disabled
+      fdtput "${CRAFT_PART_INSTALL}"/lib/firmware/*/device-tree/rockchip/rk3588-orangepi-5-plus.dtb \
+        -t s /usb@fc840000 status disabled
+      fdtput "${CRAFT_PART_INSTALL}"/lib/firmware/*/device-tree/rockchip/rk3588-orangepi-5-plus.dtb \
+        -t s /usb@fc880000 status disabled
+      fdtput "${CRAFT_PART_INSTALL}"/lib/firmware/*/device-tree/rockchip/rk3588-orangepi-5-plus.dtb \
+        -t s /usb@fc8c0000 status disabled
 
       depmod -a -b "${CRAFT_PART_INSTALL}" "$(basename ${CRAFT_PART_INSTALL}/lib/modules/*)"
     organize:
