@@ -20,7 +20,7 @@ package-repositories:
   - type: apt
     ppa: snappy-dev/image
   - type: apt
-    ppa: itrue/linux-unstable
+    ppa: itrue/kernel
 
 parts:
   kernel:
