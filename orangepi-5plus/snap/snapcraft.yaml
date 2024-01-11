@@ -19,15 +19,8 @@ architectures:
 package-repositories:
   - type: apt
     ppa: snappy-dev/image
-  # PPA syntax does not allow specifying a different suite; enter it manually
   - type: apt
-    url: https://ppa.launchpadcontent.net/canonical-kernel-team/unstable/ubuntu
-    architectures: ["${CRAFT_TARGET_ARCH}",]
-    key-server: keyserver.ubuntu.com
-    key-id: 110E21D8B0E2A1F0243AF6820856F197B892ACEA
-    formats: [deb,]
-    components: [main,]
-    suites: [noble,]
+    ppa: itrue/linux-unstable
 
 parts:
   kernel:
