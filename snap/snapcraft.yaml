@@ -18,13 +18,8 @@ architectures:
 
 package-repositories:
   - type: apt
-    url: http://ppa.launchpad.net/snappy-dev/image/ubuntu
-    architectures: ["${CRAFT_TARGET_ARCH}",]
-    key-server: keyserver.ubuntu.com
-    key-id: 78E1918602959B9C59103100F1831DDAFC42E99D
-    formats: [deb,]
-    components: [main,]
-    suites: [jammy,]
+    ppa: snappy-dev/image
+  # PPA syntax does not allow specifying a different suite; enter it manually
   - type: apt
     url: https://ppa.launchpadcontent.net/canonical-kernel-team/unstable/ubuntu
     architectures: ["${CRAFT_TARGET_ARCH}",]
