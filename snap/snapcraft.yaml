@@ -75,8 +75,8 @@ parts:
     source-type: git
     source-depth: 1
     stage-packages:
-      - linux-firmware
-      - wireless-regdb
+      - linux-firmware:${CRAFT_TARGET_ARCH}
+      - wireless-regdb:${CRAFT_TARGET_ARCH}
     override-build: |
       craftctl default
       # Overwrite any firmware files from OPi with the ones from linux-firmware
