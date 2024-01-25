@@ -34,7 +34,7 @@ parts:
     override-build: |
       craftctl default
       craftctl set version="$(apt-cache show linux-generic-wip:${CRAFT_TARGET_ARCH} | grep '^Version:' | cut -f2 -d\ )"
-      craftctl set grade="devel"
+      craftctl set grade="stable"
 
       # Make sure all modules are uncompressed
       find "${CRAFT_PART_INSTALL}/lib/modules" -name \*.ko.zst | \
