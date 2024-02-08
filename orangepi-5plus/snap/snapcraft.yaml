@@ -74,6 +74,7 @@ parts:
       - libssl-dev
       - bc
       - python3
+      - devscripts
       - on arm64:
         - gcc
       - else:
