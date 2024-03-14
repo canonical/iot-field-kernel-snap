@@ -222,7 +222,6 @@ parts:
     plugin: nil
     override-build: |
       if [ "${CRAFT_ARCH_BUILD_ON}" != "${CRAFT_ARCH_BUILD_FOR}" ]; then
-        dpkg --remove-architecture arm64
         if [ -e /etc/apt/sources.list.old ]; then
           mv /etc/apt/sources.list{.old,}
         fi
