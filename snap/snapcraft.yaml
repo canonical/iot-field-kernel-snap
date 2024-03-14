@@ -22,7 +22,9 @@ package-repositories:
   # Snapcraft does not allow adding foreign architecture PPAs, so add it
   # manually
   - type: apt
-    architectures: [ "${CRAFT_ARCH_BUILD_FOR}" ]
+    architectures:
+      - "${CRAFT_ARCH_BUILD_FOR}"
+      - "${CRAFT_ARCH_BUILD_ON}"
     components: [ main ]
     formats: [ deb ]
     key-server: keyserver.ubuntu.com
