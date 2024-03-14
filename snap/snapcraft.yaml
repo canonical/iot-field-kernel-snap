@@ -97,7 +97,7 @@ parts:
       ./debian/rules clean
       ./debian/scripts/misc/annotations --export --arch "${ARCH}" > .config
 
-      make oldconfig
+      make olddefconfig
       make -j $(nproc)
       make modules_install dtbs_install
 
