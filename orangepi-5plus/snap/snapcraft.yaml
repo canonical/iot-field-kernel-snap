@@ -78,6 +78,8 @@ parts:
       - python3
       - devscripts
       - debhelper
+      - python3
+      - python-is-python3
       - on arm64:
         - gcc
       - else:
