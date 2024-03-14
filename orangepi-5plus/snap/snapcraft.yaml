@@ -144,32 +144,13 @@ parts:
       - -firmware/liquidio
       - -firmware/i915
 
-  # We need to modify the initramfs modules, so make a copy of the "skeleton"
-  # used by ubuntu-core-initramfs that we can modify
+  # Download this separately to support cross-building
   ubuntu-core-initramfs:
     after: [ pre-build ]
     plugin: nil
     override-build: |
       apt-get download ubuntu-core-initramfs:${CRAFT_ARCH_BUILD_FOR}
       dpkg -x ubuntu-core-initramfs*.deb "${CRAFT_PART_INSTALL}/"
-      # Extra initrd modules
-      for mod in \
-          dw_mmc-rockchip \
-          sdhci-of-dwcmshc \
-          gpio-rockchip \
-          spi-rockchip \
-          rk8xx-spi \
-          rk805-pwrkey \
-          rk808-regulator \
-          pinctrl-rk805 \
-          fixed \
-          pl330 \
-          phy-rockchip-naneng-combphy \
-          r8169 \
-        ; do
-        echo "${mod}" >> \
-          "${CRAFT_PART_INSTALL}"/usr/lib/ubuntu-core-initramfs/modules/main/extra-modules.conf
-      done
     stage:
       - usr/lib/ubuntu-core-initramfs
     prime:
