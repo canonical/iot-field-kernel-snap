@@ -91,7 +91,7 @@ parts:
       - else:
         - CROSS_COMPILE: "${CRAFT_ARCH_TRIPLET_BUILD_FOR}-"
     override-build: |
-      craftctl set version="$(head -n1 debian.master/changelog | cut -f 2 -d \( | cut -f 1 -d \))"
+      craftctl set version="$(head -n1 debian.rk35xx/changelog | cut -f 2 -d \( | cut -f 1 -d \))"
       craftctl set grade="stable"
 
       ./debian/rules clean
