@@ -61,8 +61,8 @@ parts:
   kernel:
     after: [ pre-build ]
     plugin: nil
-    source: https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/noble
-    source-branch: master-next
+    source: http://git.launchpad.net/~itrue/ubuntu/+source/linux/+git/jammy
+    source-branch: orange-pi-6.1-rk35xx-ubuntu
     source-depth: 1
     source-type: git
     build-packages:
