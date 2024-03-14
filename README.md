@@ -1,5 +1,3 @@
-# ODROID-HC4 Kernel Snap
+# Orange Pi 5+ Kernel Snap
 
-Kernel snap for running Ubuntu Core 20 on the [ODROID-HC4](https://www.hardkernel.com/shop/odroid-hc4/).
-
-Gadget snap: https://github.com/IsaacJT/odroid-hc4-gadget-snap
+Kernel snap for running Ubuntu Core 22 on the Orange Pi 5+.
