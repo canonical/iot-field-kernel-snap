@@ -101,16 +101,6 @@ parts:
       make -j $(nproc)
       make modules_install dtbs_install
 
-      # Disable the USB host controllers as they cause the device to hang
-      fdtput "${INSTALL_DTBS_PATH}"/rockchip/rk3588-orangepi-5-plus.dtb \
-        -t s /usb@fc800000 status disabled
-      fdtput "${INSTALL_DTBS_PATH}"/rockchip/rk3588-orangepi-5-plus.dtb \
-        -t s /usb@fc840000 status disabled
-      fdtput "${INSTALL_DTBS_PATH}"/rockchip/rk3588-orangepi-5-plus.dtb \
-        -t s /usb@fc880000 status disabled
-      fdtput "${INSTALL_DTBS_PATH}"/rockchip/rk3588-orangepi-5-plus.dtb \
-        -t s /usb@fc8c0000 status disabled
-
       ln -svr "${CRAFT_PART_INSTALL}"/lib/modules \
         "${CRAFT_PART_INSTALL}"/modules
       gzip -c arch/"${CRAFT_ARCH_BUILD_FOR}"/boot/Image > \
