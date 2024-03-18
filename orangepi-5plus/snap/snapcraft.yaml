@@ -68,18 +68,17 @@ parts:
     source-depth: 1
     source-type: git
     build-packages:
-      - device-tree-compiler
-      - make
-      - bison
-      - flex
-      - ccache
-      - libssl-dev
       - bc
-      - python3
-      - devscripts
+      - bison
+      - ccache
       - debhelper
-      - python3
+      - device-tree-compiler
+      - devscripts
+      - flex
+      - libssl-dev
+      - make
       - python-is-python3
+      - python3
       - on arm64:
         - gcc
       - else:
