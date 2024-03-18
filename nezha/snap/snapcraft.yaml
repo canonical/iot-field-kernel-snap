@@ -32,7 +32,7 @@ parts:
     source-branch: allwinner-5.19-next
     kernel-kconfigflavour: "allwinner"
     kernel-with-firmware: false
-    kernel-compiler: ${CRAFT_ARCH_TRIPLET}-gcc
+    kernel-compiler: ${CRAFT_ARCH_TRIPLET_BUILD_FOR}-gcc
     kernel-image-target:
       riscv64: Image
     kernel-initrd-compression: gz
@@ -65,11 +65,11 @@ parts:
         - debhelper
         - flex
         - libssl-dev
-        - gcc-${CRAFT_ARCH_TRIPLET}
+        - gcc-${CRAFT_ARCH_TRIPLET_BUILD_FOR}
     stage-packages:
       - on riscv64:
-        - linux-image-allwinner:${CRAFT_TARGET_ARCH}
-        - linux-headers-allwinner:${CRAFT_TARGET_ARCH}
+        - linux-image-allwinner:${CRAFT_ARCH_BUILD_FOR}
+        - linux-headers-allwinner:${CRAFT_ARCH_BUILD_FOR}
     override-pull: |
       [ "$(gcc -dumpmachine)" = "riscv64-linux-gnu" ] || {
         # Fetch our sources and setup our environment
@@ -113,8 +113,8 @@ parts:
     source-depth: 1
     source-branch: main
     stage-packages:
-      - linux-firmware:${CRAFT_TARGET_ARCH}
-      - wireless-regdb:${CRAFT_TARGET_ARCH}
+      - linux-firmware:${CRAFT_ARCH_BUILD_FOR}
+      - wireless-regdb:all
     override-build: |
       craftctl default
       ln -sf rtl8723d_config.bin \
@@ -143,15 +143,15 @@ parts:
       - MAKEFLAGS: -j${CRAFT_PARALLEL_BUILD_COUNT}
       - to riscv64:
         - ARCH: riscv
-        - CC: ${CRAFT_ARCH_TRIPLET}-gcc-12
-        - CROSS_COMPILE: ${CRAFT_ARCH_TRIPLET}-
+        - CC: ${CRAFT_ARCH_TRIPLET_BUILD_FOR}-gcc-12
+        - CROSS_COMPILE: ${CRAFT_ARCH_TRIPLET_BUILD_FOR}-
     build-packages:
       - make
       - bc
       - to riscv64:
-        - gcc-12-${CRAFT_ARCH_TRIPLET}
-        - binutils-${CRAFT_ARCH_TRIPLET}
-        - libc6-dev-${CRAFT_TARGET_ARCH}-cross
+        - gcc-12-${CRAFT_ARCH_TRIPLET_BUILD_FOR}
+        - binutils-${CRAFT_ARCH_TRIPLET_BUILD_FOR}
+        - libc6-dev-${CRAFT_ARCH_BUILD_FOR}-cross
       - on riscv64:
         - gcc-12
     override-pull: |
@@ -219,7 +219,7 @@ parts:
       craftctl default
 
       mkimage \
-          -f kernel_${CRAFT_TARGET_ARCH}.its \
+          -f kernel_${CRAFT_ARCH_BUILD_FOR}.its \
           ${CRAFT_PRIME}/kernel.img
     prime:
-      - -kernel_${CRAFT_TARGET_ARCH}.its
+      - -kernel_${CRAFT_ARCH_BUILD_FOR}.its
