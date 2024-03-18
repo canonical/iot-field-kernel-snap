@@ -18,6 +18,20 @@ architectures:
       - amd64
     build-for: arm64
 
+package-repositories:
+  - type: apt
+    components: [main]
+    architectures: [arm64]
+    suites: [jammy, jammy-security, jammy-updates]
+    key-id: F6ECB3762474EDA9D21B7022871920D1991BC93C
+    url: http://ports.ubuntu.com/ubuntu-ports
+  - type: apt
+    suites: [jammy]
+    components: [main]
+    architectures: [amd64, arm64]
+    key-id: 78E1918602959B9C59103100F1831DDAFC42E99D
+    url: http://ppa.launchpad.net/snappy-dev/image/ubuntu
+
 parts:
   kernel:
     plugin: nil
