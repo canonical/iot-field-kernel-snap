@@ -214,6 +214,7 @@ parts:
     plugin: dump
     source: fit-image/
     build-packages:
+      - device-tree-compiler
       - u-boot-tools
     override-stage: |
       craftctl default
