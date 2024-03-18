@@ -14,7 +14,11 @@ confinement: strict
 
 package-repositories:
   - type: apt
-    ppa: snappy-dev/image
+    suites: [jammy]
+    components: [main]
+    architectures: [amd64, riscv64]
+    key-id: 78E1918602959B9C59103100F1831DDAFC42E99D
+    url: http://ppa.launchpad.net/snappy-dev/image/ubuntu
   # Get the latest version of the riscv64 kernel. Note we can't use the ppa
   # syntax here because snapcraft doesn't allow arch specifiers there.
   - type: apt
