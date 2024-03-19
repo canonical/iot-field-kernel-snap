@@ -1,131 +1,168 @@
 name: visionfive2-kernel
 adopt-info: kernel
 type: kernel
-build-base: core22
+build-base: core24
 summary: A StarFive VisionFive 2 board kernel for use with Ubuntu Core 22
 description: |
-  A StarFive VisionFive 2 board kernel for use with Ubuntu Core 22
+  This snap provides the kernel, modules, firmware, and initrd required to
+  create an Ubuntu Core image for the StarFive VisionFive 2.
 
-contact: dilyn.corner@canonical.com
+  The kernel and initrd are provided as a single universal kernel image file
+  which is then booted by the managed assets created and owned by snapd.
+  Generally, this snap would also provide the device tree files for the target
+  hardware. However, in this case, that device tree is provided by the u-boot
+  binary in our gadget snap. If we needed it here, we could likewise add that
+  file to our UKI.
+
+  ** Note that the license information for this snap is incomplete **
+  Do your due diligence to ensure compliance with the licenses of the contents of this snap.
+
+  This snapcraft.yaml is licensed under CC-BY-SA-4.0
+
+  You can find any and all licenses for the contents of this snap at the following locations:
+
+  kernel:             https://git.launchpad.net/~canonical-kernel/ubuntu/+source/linux-riscv/+git/noble/tree/?h=allwinner-next
+  linux-firmware:     https://git.launchpad.net/ubuntu/+source/linux-firmware/tree/?h=applied/ubuntu/noble
+
+  Additional licenses can also be found within this snap in the licenses/ top-level directory.
+
+license: "GPL-2.0 AND GPL-3.0 AND CC-BY-SA-4.0"
+website: https://github.com/canonical/iot-field-kernel-snap
 issues: https://github.com/canonical/iot-field-kernel-snap/issues
-license: GPL-2.0
 source-code: https://github.com/canonical/iot-field-kernel-snap/tree/22-riscv64-visionfive2
-website: https://dilyn.cc
 
-grade: stable
+grade: devel
 confinement: strict
 
 architectures:
-  - build-on:  [amd64, riscv64]
+  - build-on:  [riscv64]
     build-for: [riscv64]
 
 package-repositories:
   - type: apt
-    suites: [jammy]
-    components: [main]
-    architectures: [amd64, riscv64]
-    key-id: 78E1918602959B9C59103100F1831DDAFC42E99D
-    url: http://ppa.launchpad.net/snappy-dev/image/ubuntu
-    # TODO: use the official kernel once better USB/PCIe support has landed
-  - type: apt
-    suites: [jammy]
+    suites: [noble]
     components: [main]
     architectures: [riscv64]
-    key-id: C5B75CD85D1916F42DF92023F0A7B59173223CBB
-    url: https://ppa.launchpadcontent.net/esmil/ppa/ubuntu 
+    key-id: 78E1918602959B9C59103100F1831DDAFC42E99D
+    url: http://ppa.launchpad.net/snappy-dev/image/ubuntu
 
 parts:
-  firmware:
-    plugin: dump
-    source: https://git.launchpad.net/~canonical-kernel-snaps/+git/kernel-snaps-uc22
-    source-type: git
-    source-depth: 1
-    source-branch: main
+  kernel:
+    plugin: nil
     stage-packages:
-      - linux-firmware:${CRAFT_TARGET_ARCH}
+      - linux-starfive:${CRAFT_ARCH_BUILD_FOR}
+    override-build: |
+      craftctl default
+
+      kver="$(basename "${CRAFT_PART_INSTALL}/lib/modules/"*)"
+
+      # Set the version of the snap to match the kernel version.
+      craftctl set version="$kver"
+
+      # The version of the snap is not queriable by other parts, unfortunately.
+      # Create a small file at build-time to share the version information with
+      # other parts.
+      echo $kver > "${CRAFT_PART_INSTALL}/kver"
+
+      # Create the module information tree.
+      depmod -a -b "${CRAFT_PART_INSTALL}" "$kver"
+
+      mv -f "${CRAFT_PART_INSTALL}/lib/modules"          "${CRAFT_PART_INSTALL}"
+      mv -f "${CRAFT_PART_INSTALL}/boot/vmlinuz-${kver}" "${CRAFT_PART_INSTALL}"
+
+      # Ubuntu Core expects modules/ to be a top-level directory in the snap,
+      # but we must also maintain compatibility with things which expect it to
+      # be in lib/modules/
+      ln -sf ../modules "${CRAFT_PART_INSTALL}/lib/modules"
+    stage:
+      - kver
+      - lib/modules
+      - modules/
+      - vmlinuz-*
+    prime:
+      - lib/modules
+      - modules/
+
+  firmware:
+    after: [kernel]
+    plugin: nil
+    stage-packages:
+      - linux-firmware:${CRAFT_ARCH_BUILD_FOR}
       - wireless-regdb
+    override-build: |
+      craftctl default
+      
+      mv -f  "${CRAFT_PART_INSTALL}/lib/firmware" "${CRAFT_PART_INSTALL}/firmware"
+
+      # Ubuntu Core expects firmware/ to be a top-level directory in the snap,
+      # but we must also maintain compatibility with things which expect it to
+      # be in lib/firmware/
+      ln -sf ../firmware  "${CRAFT_PART_INSTALL}/lib/firmware"
     organize:
-      lib/firmware: firmware/
+      usr/share/doc/linux-firmware/licenses: licenses/
     prime:
       - firmware/
-
-  kernel:
-    after: [firmware]
-    plugin: nil
-    stage-packages:
-      - linux-starfive:${CRAFT_TARGET_ARCH}
-    override-build: |
-      craftctl default
-
-      KERNEL_VER="$(ls ${CRAFT_PART_INSTALL}/lib/modules)"
-      echo ${KERNEL_VER} > ${CRAFT_PART_INSTALL}/.kernel_ver
-
-      # Generate all the module files required for ubuntu-core-initramfs
-      depmod -ab "${CRAFT_PART_INSTALL}" "${KERNEL_VER}"
-
-      craftctl set version="$(apt info linux-image-starfive:${CRAFT_TARGET_ARCH} | grep Version: | cut -f2 -d\ )"
-    organize:
-      boot/config-*: config
-      boot/vmlinuz-*: vmlinuz
-      boot/System.map-*: System.map
-      lib/modules/: modules/
-      lib/firmware/*/device-tree/: dtbs/
-    stage:
-      - dtbs
-      - modules
-      - vmlinuz
-      - .kernel_ver
-    override-prime: |
-      craftctl default
-      "${CRAFT_STAGE}/trim-firmware" "${CRAFT_PRIME}"
-    prime:
-      - modules
-
-  ubuntu-core-initramfs:
-    plugin: nil
-    override-pull: |
-      apt-get download ubuntu-core-initramfs:${CRAFT_TARGET_ARCH}
-    override-build: |
-      dpkg -x ubuntu-core-initramfs*_${CRAFT_TARGET_ARCH}.deb \
-        "${CRAFT_PART_INSTALL}"
-
-      # Extra initrd modules
-      # echo sdhci-cadence >> \
-        # "${CRAFT_PART_INSTALL}/usr/lib/ubuntu-core-initramfs/modules/main/extra-modules.conf"
-    organize:
-      usr/lib/ubuntu-core-initramfs: ubuntu-core-initramfs
-    prime:
-      - -*
+      - licenses/
+      - lib/firmware
+      - -firmware/mellanox
+      - -firmware/mrvl
+      - -firmware/amdgpu
+      - -firmware/qcom
+      - -firmware/netronome
+      - -firmware/intel
+      - -firmware/i915
+      - -firmware/mediatek
+      - -firmware/qed
+      - -firmware/liquidio
+      - -firmware/dpaa2
+      - -firmware/radeon
 
   initrd:
+    after: [firmware, kernel]
     plugin: nil
-    after: [kernel, ubuntu-core-initramfs, firmware]
     build-packages: [ubuntu-core-initramfs]
     override-build: |
-      KERNEL_VERSION="$(cat ${CRAFT_STAGE}/.kernel_ver)"
-      ubuntu-core-initramfs create-initrd \
-        --kernelver="${KERNEL_VERSION}" \
-        --kerneldir="${CRAFT_STAGE}/modules/${KERNEL_VERSION}" \
-        --skeleton="${CRAFT_STAGE}/ubuntu-core-initramfs" \
-        --firmwaredir="${CRAFT_STAGE}/firmware" \
-        --output="${CRAFT_PART_INSTALL}/initrd.img"
-    organize:
-      initrd.img*: initrd.img
+      craftctl default
+      
+      read -r kver < "${CRAFT_STAGE}/kver"
+
+      ubuntu-core-initramfs create-initrd              \
+        --kernelver   "${kver}"                        \
+        --kerneldir   "${CRAFT_STAGE}/modules/${kver}" \
+        --skeleton    /usr/lib/ubuntu-core-initramfs   \
+        --firmwaredir "${CRAFT_STAGE}/firmware"        \
+        --output      "${CRAFT_PART_INSTALL}/initrd.img"
+    stage:
+      - initrd.img*
     prime:
       - -*
 
-  fit-image:
-    after: [kernel, initrd]
-    plugin: dump
-    source: fit-image/
+  uki:
+    after: [firmware, initrd, kernel]
+    plugin: nil
     build-packages:
-      - device-tree-compiler
-      - u-boot-tools
+      - ubuntu-core-initramfs
+    stage-packages:
+      - systemd-boot-efi:${CRAFT_ARCH_BUILD_FOR}
+    organize:
+      usr/lib/systemd/boot/efi/linuxriscv64.efi.stub: linuxriscv64.efi.stub
+    stage:
+      - linuxriscv64.efi.stub
     override-stage: |
       craftctl default
 
-      mkimage \
-          -f fitImage-${CRAFT_TARGET_ARCH}.its \
-          ${CRAFT_PRIME}/kernel.img
+      read -r kver < "${CRAFT_STAGE}/kver"
+
+      ubuntu-core-initramfs create-efi --unsigned     \
+        --kernelver "${kver}"                         \
+        --kernel "${CRAFT_STAGE}/vmlinuz"             \
+        --initrd "${CRAFT_STAGE}/initrd.img"          \
+        --stub "${CRAFT_STAGE}/linuxriscv64.efi.stub" \
+        --output "${CRAFT_STAGE}/kernel.efi"
+
+      # The GRUB files snapd manages expects the UKI to be named 'kernel.efi';
+      # the version information is encoded in the version string of the snap so
+      # end-users should always know what versio of the kernel they are using.
+      cp -f "${CRAFT_STAGE}/kernel.efi-${kver}" "${CRAFT_PRIME}/kernel.efi"
     prime:
-      - -fitImage-${CRAFT_TARGET_ARCH}.its
+      - -*
