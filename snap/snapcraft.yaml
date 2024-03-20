@@ -67,19 +67,31 @@ parts:
       # Create the module information tree.
       depmod -a -b "${CRAFT_PART_INSTALL}" "$kver"
 
-      mv -f "${CRAFT_PART_INSTALL}/lib/modules"          "${CRAFT_PART_INSTALL}"
-      mv -f "${CRAFT_PART_INSTALL}/boot/vmlinuz-${kver}" "${CRAFT_PART_INSTALL}"
+      mv -f "${CRAFT_PART_INSTALL}/lib/modules"                       \
+        "${CRAFT_PART_INSTALL}"
+      mv -f "${CRAFT_PART_INSTALL}/boot/vmlinuz-${kver}"              \
+        "${CRAFT_PART_INSTALL}"
+      mv -f "${CRAFT_PART_INSTALL}/lib/firmware/${kver}/device-tree/" \
+        "${CRAFT_PART_INSTALL}/dtbs"
+
+      # Specify that the snap provides the device trees for the gadget snap to
+      # consume Doing this is a requirement for leveraging the [kernel-assets]
+      # assumption and the $kernel:<foo> syntax in the gadget's gadget.yaml
+      install -Dm644 "${CRAFT_PROJECT_DIR}/kernel.yaml" \
+        "${CRAFT_PART_INSTALL}/meta/kernel.yaml"
 
       # Ubuntu Core expects modules/ to be a top-level directory in the snap,
       # but we must also maintain compatibility with things which expect it to
       # be in lib/modules/
       ln -sf ../modules "${CRAFT_PART_INSTALL}/lib/modules"
     stage:
+      - dtbs/starfive
       - kver
       - lib/modules
       - modules/
       - vmlinuz-*
     prime:
+      - dtbs/starfive
       - lib/modules
       - modules/
 
