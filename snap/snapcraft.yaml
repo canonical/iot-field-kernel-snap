@@ -1,13 +1,35 @@
 name: nezha-kernel
 adopt-info: kernel
-summary: A Nezha board kernel for use with Ubuntu Core 22
-description: |
-  A Nezha board kernel for use with Ubuntu Core 22
-build-base: core22
 type: kernel
+build-base: core22
+summary: An Ubuntu Core kernel for the RISC-V AllWinner Nezha
+description: |
+  This snap provides the kernel, modules, firmware, and initrd required to
+  create an Ubuntu Core image for the RISC-V AllWinner Nezha.
+
+  The kernel and initrd are provided as a singular FIT image file.
+  This FIT image includes several other device trees to accomodate the Sipeed Lichee RV and its various additional peripherals.
+
+  ** Note that the license information for this snap is incomplete **
+  Do your due diligence to ensure compliance with the licenses of the contents of this snap.
+
+  This snapcraft.yaml and the kernel_riscv64.its file are licensed under CC-BY-SA-4.0
+
+  You can find any and all licenses for the contents of this snap at the following locations:
+
+  kernel:             https://git.launchpad.net/~canonical-kernel/ubuntu/+source/linux-riscv/+git/noble/tree/?h=allwinner-next
+  linux-firmware:     https://git.launchpad.net/ubuntu/+source/linux-firmware/tree/?h=applied/ubuntu/noble
+  rtl8723ds:          https://git.launchpad.net/ubuntu/+source/licheerv-rtl8723ds-dkms/tree/
+  rtl8723ds upstream: https://github.com/lwfinger/rtl8723ds
+
+  Additional licenses can also be found within this snap in the licenses/ top-level directory.
 
 grade: stable
 confinement: strict
+
+license: "GPL-2.0 AND GPL-3.0 AND CC-BY-SA-4.0"
+issues: https://github.com/canonical/iot-field-kernel-snap/issues
+website: https://github.com/canonical/iot-field-kernel-snap/tree/22-riscv64-nezha
 
 architectures:
   - build-on:  [amd64, riscv64]
