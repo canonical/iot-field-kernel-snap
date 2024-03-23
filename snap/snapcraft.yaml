@@ -145,11 +145,13 @@ parts:
         ${CRAFT_PART_INSTALL}/lib/firmware/rtl_bt/rtl8723ds_fw.bin
     organize:
       lib/firmware: firmware/
+      usr/share/doc/linux-firmware/licenses: licenses/
     stage:
       - firmware/
+      - licenses/
       - trim-firmware
     prime:
-      - -*
+      - licenses/
 
   # NOTE: WiFi is currently broken on the Nezha board.
   # WiFi works fine on the Sipeed Lichee RV.
