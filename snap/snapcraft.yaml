@@ -156,7 +156,6 @@ parts:
       ubuntu-core-initramfs create-initrd              \
         --kernelver   "${kver}"                        \
         --kerneldir   "${CRAFT_STAGE}/modules/${kver}" \
-        --skeleton    /usr/lib/ubuntu-core-initramfs   \
         --firmwaredir "${CRAFT_STAGE}/firmware"        \
         --output      "${CRAFT_PART_INSTALL}/initrd.img"
     stage:
