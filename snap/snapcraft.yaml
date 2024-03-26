@@ -192,13 +192,14 @@ parts:
         apt-get download snapd:${CRAFT_ARCH_BUILD_FOR}
         dpkg -x snapd*.deb "${CRAFT_PART_BUILD}"
         mkdir -p "${CRAFT_PART_BUILD}"/initrd
-        pushd "${CRAFT_PART_BUILD}"/initrd
-        zstd -dc < "${CRAFT_STAGE}"/initrd.img-* | cpio -id
-        install -Dm0755 "${CRAFT_PART_BUILD}"/usr/lib/snapd/snap-bootstrap \
-          usr/lib/snapd/snap-bootstrap
-        find . | cpio --create --quiet --format='newc' --owner=0:0 | \
-          zstd -1 -T0 > "${CRAFT_PART_INSTALL}"/initrd.img
-        popd
+        (
+          cd "${CRAFT_PART_BUILD}"/initrd
+          zstd -dc < "${CRAFT_STAGE}"/initrd.img-* | cpio -id
+          install -Dm0755 "${CRAFT_PART_BUILD}"/usr/lib/snapd/snap-bootstrap \
+            usr/lib/snapd/snap-bootstrap
+          find . | cpio --create --quiet --format='newc' --owner=0:0 | \
+            zstd -1 -T0 > "${CRAFT_PART_INSTALL}"/initrd.img
+        )
       else
         cp "${CRAFT_STAGE}"/initrd.img-* "${CRAFT_PART_INSTALL}"/initrd.img
       fi
