@@ -1,0 +1,181 @@
+name: Snap Builds CI
+
+# This workflow is intended to test that each kernel snap can be built with some
+# relevant version of snapcraft, with the aim of hopefully catching bugs or
+# regressions.
+# Please only create AMD64 build-on jobs. If you want non-AMD64 builds, use Launchpad.
+
+# Run the jobs on:
+#   1) 12PM UTC weekly on Monday
+on:
+  schedule:
+    - cron: '0 12 * * MON'
+  workflow_dispatch:
+
+# Convention:
+# jobs:
+#   build_<branch name>_<snapcraft track>:
+#     name: <snapcraft track> job for <branch> snap
+#     runs-on: ubuntu-<base>
+#     steps:
+#       - name: Checkout <branch>
+#         uses: actions/checkout@v4
+#         with:
+#           ref: <branch>
+#       - name: Test build of <branch> snap with snapcraft <channel>
+#         uses: snapcore/action-build@v1
+#         with:
+#           snapcraft-channel: <track>/<risk>/<branch>
+#           snapcraft-args: --verbosity=verbose
+
+jobs:
+  build_22_amd64_pc_7:
+    name: 7.x/edge job for 22-amd64-pc snap
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout 22-amd64-pc
+        uses: actions/checkout@v4
+        with:
+          ref: 22-amd64-pc
+      - name: Test build of 22-amd64-pc with snapcraft 7.x/edge
+        uses: snapcore/action-build@v1
+        with:
+          snapcraft-channel: 7.x/edge
+          snapcraft-args: --verbosity=verbose
+  build_22_amd64_pc_latest:
+    name: latest/edge job for 22-amd64-pc snap
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout 22-amd64-pc
+        uses: actions/checkout@v4
+        with:
+          ref: 22-amd64-pc
+      - name: Test build of 22-amd64-pc with snapcraft latest/edge
+        uses: snapcore/action-build@v1
+        with:
+          snapcraft-channel: latest/edge
+          snapcraft-args: --verbosity=verbose
+
+  build_22_arm64_odroid-hc4_7:
+    name: 7.x/edge job for 22-arm64-odroid-hc4 snap
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: 22-arm64-odroid-hc4
+      - name: Fix variable names
+        run: |
+          sed -i 's/CRAFT_ARCH_BUILD_FOR/CRAFT_TARGET_ARCH/g' snap/snapcraft.yaml
+      - name: Test build of 22-arm64-odroid-hc4 snap with snapcraft 7.x/edge
+        uses: snapcore/action-build@v1
+        with:
+          snapcraft-channel: 7.x/edge
+          snapcraft-args: --verbosity=verbose
+  build_22_arm64_odroid-hc4_latest:
+    name: latest/edge job for 22-arm64-odroid-hc4 snap
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: 22-arm64-odroid-hc4
+      - name: Test build of 22-arm64-odroid-hc4 snap with snapcraft latest/edge
+        uses: snapcore/action-build@v1
+        with:
+          snapcraft-channel: latest/edge
+          snapcraft-args: --verbosity=verbose
+
+  # We run out of space anyways...
+  # build_22_arm64_orange_pi_5plus_7:
+  #   name: 7.x/edge job for 22-arm64-orange-pi-5plus snap
+  #   runs-on: ubuntu-22.04
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
+  #       with:
+  #         ref: 22-arm64-orange-pi-5plus
+  #     - name: Fix variable names
+  #       run: |
+  #         # This particular snapcraft.yaml actually requires a bit more TLC than this
+  #         sed -i 's/CRAFT_ARCH_BUILD_FOR/CRAFT_TARGET_ARCH/g' snap/snapcraft.yaml
+  #     - name: Test build of 22-arm64-orange-pi-5plus snap with snapcraft 7.x/edge
+  #       uses: snapcore/action-build@v1
+  #       with:
+  #         snapcraft-channel: 7.x/edge
+  #         snapcraft-args: --verbosity=verbose
+  # build_22_arm64_orange_pi_5plus_latest:
+  #   name: latest/edge job for 22-arm64-orange-pi-5plus snap
+  #   runs-on: ubuntu-22.04
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
+  #       with:
+  #         ref: 22-arm64-orange-pi-5plus
+  #     - name: Test build of 22-arm64-orange-pi-5plus snap with snapcraft latest/edge
+  #       uses: snapcore/action-build@v1
+  #       with:
+  #         snapcraft-channel: latest/edge
+  #         snapcraft-args: --verbosity=verbose
+
+  # We run out of space anyways...
+  # build_22_riscv64_nezha_7:
+  #   name: 7.x/edge job for 22-riscv64-nezha snap
+  #   runs-on: ubuntu-22.04
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
+  #       with:
+  #         ref: 22-riscv64-nezha
+  #     - name: Fix variable names
+  #       run: |
+  #         sed -i 's/CRAFT_ARCH_BUILD_FOR/CRAFT_TARGET_ARCH/g' snap/snapcraft.yaml
+  #         sed -i 's/CRAFT_ARCH_TRIPLET_BUILD_FOR/CRAFT_ARCH_TRIPLET/g' snap/snapcraft.yaml
+  #     - name: Test build of 22-riscv64-nezha snap with snapcraft 7.x/edge
+  #       uses: snapcore/action-build@v1
+  #       with:
+  #         snapcraft-channel: 7.x/edge
+  #         snapcraft-args: --verbosity=verbose --enable-experimental-plugins
+  # build_22_riscv64_nezha_latest:
+  #   name: latest/edge job for 22-riscv64-nezha snap
+  #   runs-on: ubuntu-22.04
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
+  #       with:
+  #         ref: 22-riscv64-nezha
+  #     - name: Test build of 22-riscv64-nezha snap with snapcraft latest/edge
+  #       uses: snapcore/action-build@v1
+  #       with:
+  #         snapcraft-channel: latest/edge
+  #         snapcraft-args: --verbosity=verbose --enable-experimental-plugins
+
+  build_22_riscv64_polarfire_7:
+    name: 7.x/edge job for 22-riscv64-polarfire snap
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: 22-riscv64-polarfire
+      - name: Fix variable names
+        run: |
+          sed -i 's/CRAFT_ARCH_BUILD_FOR/CRAFT_TARGET_ARCH/g' snap/snapcraft.yaml
+      - name: Test build of 22-riscv64-polarfire snap with snapcraft 7.x/edge
+        uses: snapcore/action-build@v1
+        with:
+          snapcraft-channel: 7.x/edge
+          snapcraft-args: --verbosity=verbose
+  build_22_riscv64_polarfire_latest:
+    name: latest/edge job for 22-riscv64-polarfire snap
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: 22-riscv64-polarfire
+      - name: Test build of 22-riscv64-polarfire snap with snapcraft latest/edge
+        uses: snapcore/action-build@v1
+        with:
+          snapcraft-channel: latest/edge
+          snapcraft-args: --verbosity=verbose
