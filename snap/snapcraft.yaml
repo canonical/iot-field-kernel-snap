@@ -39,23 +39,10 @@ issues: https://github.com/canonical/iot-field-kernel-snap/issues
 # We cannot cross-build the kernel snap at this time. To do so, we would have to
 # hand-craft an initrd. While not impossible, it is a little too demanding for
 # our purposes at this time.
-architectures:
-  - build-on:  [riscv64]
+platforms:
+  riscv64:
+    build-on:  [amd64, riscv64]
     build-for: [riscv64]
-
-package-repositories:
-  # Provides ubuntu-core-initramfs
-  # NOTE: ubuntu-core-initramfs changed between jammy and noble such that one
-  # can no longer create an initrd for an architecture different from the host;
-  # files are copied from the host machine.
-  # The ABI between Core22 and Core24 changed in such a way that a Core22 initrd
-  # cannot boot a Core24 system.
-  - type: apt
-    suites: [noble]
-    components: [main]
-    architectures: [riscv64]
-    key-id: 78E1918602959B9C59103100F1831DDAFC42E99D
-    url: http://ppa.launchpad.net/snappy-dev/image/ubuntu
 
 parts:
   # Provide the kernel.
@@ -97,41 +84,24 @@ parts:
       - lib/modules
       - modules/
 
-  # Provide any and all firmware.
-  # Removing unecessary firmware blobs dramatically reduces kernel snap size.
   firmware:
     after: [kernel]
-    plugin: nil
-    stage-packages:
-      - linux-firmware:${CRAFT_ARCH_BUILD_FOR}
-      - wireless-regdb
-    override-build: |
-      craftctl default
-      
-      mv -f  "${CRAFT_PART_INSTALL}/lib/firmware" "${CRAFT_PART_INSTALL}/firmware"
-
-      # Ubuntu Core expects firmware/ to be a top-level directory in the snap,
-      # but we must also maintain compatibility with things which expect it to
-      # be in lib/firmware/
-      ln -sf ../firmware  "${CRAFT_PART_INSTALL}/lib/firmware"
+    plugin: dump
+    source: https://git.launchpad.net/canonical-kernel-snaps
+    source-depth: 1
+    source-type: git
+    stage-packages: [linux-firmware, wireless-regdb]
     organize:
-      usr/share/doc/linux-firmware/licenses: licenses/
+      lib/firmware: firmware/
+    override-prime: |
+      craftctl default
+
+      "${CRAFT_STAGE}/trim-firmware" "${CRAFT_PRIME}"
+    stage:
+      - firmware/
+      - trim-firmware
     prime:
       - firmware/
-      - licenses/
-      - lib/firmware
-      - -firmware/mellanox
-      - -firmware/mrvl
-      - -firmware/amdgpu
-      - -firmware/qcom
-      - -firmware/netronome
-      - -firmware/intel
-      - -firmware/i915
-      - -firmware/mediatek
-      - -firmware/qed
-      - -firmware/liquidio
-      - -firmware/dpaa2
-      - -firmware/radeon
 
   # Provide the initrd for Ubuntu Core.
   # The initrd includes important things such as snap-bootstrap which
@@ -139,60 +109,15 @@ parts:
   # for this tool can be found here:
   # https://github.com/snapcore/snapd/blob/master/cmd/snap-bootstrap/README.md
   initrd:
-    plugin: nil
+    plugin: initrd
     after: [kernel, firmware]
-    build-packages:
-      - ubuntu-core-initramfs
-    override-pull: |
-      craftctl default
-      
-      # Add extra modules we know we may need for our target device
-      echo sunxi-mmc >> /usr/lib/ubuntu-core-initramfs/modules/main/extra-modules.conf
-    override-build: |
-      craftctl default
-      
-      read -r kver < "${CRAFT_STAGE}/kver"
-
-      ubuntu-core-initramfs create-initrd              \
-        --kernelver   "${kver}"                        \
-        --kerneldir   "${CRAFT_STAGE}/modules/${kver}" \
-        --firmwaredir "${CRAFT_STAGE}/firmware"        \
-        --output      "${CRAFT_PART_INSTALL}/initrd.img"
-    stage:
-      - initrd.img*
-    prime:
-      - -*
-
-  # Provide the Unified Kernel Image.
-  # GRUB allows chainloading UKIs to boot, and UKIs can be signed in a simple
-  # manner to enable SecureBoot. Note that we do not currently enable SecureBoot
-  # on RISC-V hardware.
-  uki:
-    after: [firmware, initrd, kernel]
-    plugin: nil
-    build-packages:
-      - ubuntu-core-initramfs
-    stage-packages:
-      - systemd-boot-efi:${CRAFT_ARCH_BUILD_FOR}
-    organize:
-      usr/lib/systemd/boot/efi/linuxriscv64.efi.stub: linuxriscv64.efi.stub
-    stage:
-      - linuxriscv64.efi.stub
-    override-stage: |
-      craftctl default
-
-      read -r kver < "${CRAFT_STAGE}/kver"
-
-      ubuntu-core-initramfs create-efi --unsigned     \
-        --kernelver "${kver}"                         \
-        --kernel "${CRAFT_STAGE}/vmlinuz"             \
-        --initrd "${CRAFT_STAGE}/initrd.img"          \
-        --stub "${CRAFT_STAGE}/linuxriscv64.efi.stub" \
-        --output "${CRAFT_STAGE}/kernel.efi"
-
-      # The GRUB files snapd manages expects the UKI to be named 'kernel.efi';
-      # the version information is encoded in the version string of the snap so
-      # end-users should always know what versio of the kernel they are using.
-      cp -f "${CRAFT_STAGE}/kernel.efi-${kver}" "${CRAFT_PRIME}/kernel.efi"
-    prime:
-      - -*
+    initrd-build-efi-image: true
+    initrd-configured-modules:
+      - sunxi-mmc
+    build-snaps: [core24]
+    #stage-packages:
+    #  - systemd-boot-efi:${CRAFT_ARCH_BUILD_FOR}
+    #organize:
+    #  usr/lib/systemd/boot/efi/linuxriscv64.efi.stub: linuxriscv64.efi.stub
+    #stage:
+    #  - linuxriscv64.efi.stub
