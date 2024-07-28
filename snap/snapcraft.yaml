@@ -48,9 +48,17 @@ description: |
   All provided: licenses/
 
 # At a minimum the snap should build natively.
+# See: https://snapcraft.io/docs/reference-architectures
+# For snaps with base core22 and earlier, use the architectures syntax:
 architectures:
   - build-on:  [<arch>]
     build-for: [<arch>]
+# For snaps with base core24 and later, use the platforms syntax:
+platforms:
+  # If <name> is one of amd64|arm64|armhf|ppc64el|riscv64|s390x, build-{on,for} are implicit
+  <name>:
+    build-on:  [<arch>]
+    build-for: [<arch>] 
 
 # Any additional repositories required.
 # For instance, if you are building on AMD64 for ARM64,
