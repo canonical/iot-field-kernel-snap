@@ -18,6 +18,7 @@ adopt-info: kernel
 # but do not otherwise require a base as all other snaps do. As such, only a
 # build-base is required.
 build-base: <base>
+# The type is one of app|gadget|kernel|snapd, as this is a kernel snap...
 type: kernel
 # The grade should always be stable unless the kernel is using a devel-grade build-base.
 grade: stable
@@ -49,11 +50,12 @@ description: |
 
 # At a minimum the snap should build natively.
 # See: https://snapcraft.io/docs/reference-architectures
-# For snaps with base core22 and earlier, use the architectures syntax:
+# For snaps with {build-,}base core22 and earlier, use the architectures syntax:
 architectures:
+  # If only native builds are done, build-for can be omitted
   - build-on:  [<arch>]
     build-for: [<arch>]
-# For snaps with base core24 and later, use the platforms syntax:
+# For snaps with {build-,}base core24 and later, use the platforms syntax:
 platforms:
   # If <name> is one of amd64|arm64|armhf|ppc64el|riscv64|s390x, build-{on,for} are implicit
   <name>:
@@ -123,7 +125,7 @@ parts:
       craftctl default
 
       # snapcraft should do the correct thing and fetch all the requirements
-      # for the kernel deb, including the modules distributed with that kernel
+      # for the kernel deb, including the modules distributed with that kernel.
       # The version string can be set from the directory name in the modules
       # directory.
       kver="$(basename "${CRAFT_PART_INSTALL}/lib/modules/"*)"
@@ -135,6 +137,8 @@ parts:
       depmod -a -b "${CRAFT_PART_INSTALL}" "$kver"
 
       mv -rf "${CRAFT_PART_INSTALL}/lib/modules"          "${CRAFT_PART_INSTALL}/"
+      # ubuntu-core-initramfs, which will package the kernel and initrd into a
+      # single binary file, expects a specific kernel image filename
       mv -f  "${CRAFT_PART_INSTALL}/boot/vmlinuz-${kver}" "${CRAFT_PART_INSTALL}/kernel.img-${kver}"
 
       # Ubuntu Core expects modules/ to be a top-level directory in the snap,
@@ -154,12 +158,16 @@ parts:
       - modules/
       - lib/modules/
 
-  # If instead the kernel needs to be built from source for some reason
-  # (changing what features are built as modules versus builtin, for instance),
+  # There are a couple reasons to want to build a kernel from source:
+  #   * changing what features are built as modules versus builtin
+  #   * patching a kernel to support a new feature
+  #   * patching a kernel to support a whole platform
   # an optimal place for fetching the kernel sources is directly from Canonical.
   # This guarantees that the source has all the patches required for running
-  # Ubuntu Core, but be aware that modifying kernel KCONFIG values can have
-  # drastic consequences for the viability of a kernel.
+  # Ubuntu Core. Patches to support the new feature or platform can be applied
+  # via an override-pull for this part; see kernel-src-other for an example.
+  # Be aware that modifying kernel KCONFIG values can have drastic consequences
+  # for the viability of a kernel.
   # See the 22-riscv64-nezha branch for an example:
   # https://github.com/canonical/iot-field-kernel-snap/blob/22-riscv64-nezha/snap/snapcraft.yaml
 
@@ -178,25 +186,23 @@ parts:
     source-type: git
     # It may be preferable to pin to a specific commit or tag
     source-branch: master
-    # There are many options the kernel plugin exposes, mostly to do with kernel
-    # KCONFIG options.
+    # There are many options the kernel plugin exposes, mostly to do with KCONFIGs.
     # Generally, the defaults the kernel plugin selects will be fine for most
     # use-cases, as the default configuration is a generic configuration which
-    # attempts to target the broadest collection of hardware
+    # attempts to target the broadest collection of hardware.
     # For a list of all available otions, see the kernel plugin documentation:
     # TODO: change link to the plugin documentation. For now, the source works.
     # https://github.com/canonical/snapcraft/blob/main/snapcraft/parts/plugins/kernel_plugin.py
     # TODO: are these build-packages required?
     build-packages: [bison, flex, libelf-dev, libssl-dev]
     override-build: |
+      # Build the kernel. The kernel plugin should do all of the correct things here.
       craftctl default
 
+      # Again, using the directory name in the lib/modules directory captures
+      # the kernel version adequately.
       kver="$(basename "${CRAFT_PART_INSTALL}/lib/modules/"*)"
       craftctl set version="$kver"
-
-      # ubuntu-core-initramfs, which will package the kernel and initrd into a
-      # single binary file, expects a specific kernel image filename
-      cp -f "${CRAFT_PART_INSTALL}/kernel.img" "${CRAFT_PART_INSTALL}/kernel.img-${kver}"
     prime:
       - modules/
       - lib/modules/
@@ -222,7 +228,7 @@ parts:
   # available at runtime. There are a handful of useful references such as the
   # Gentoo wiki:
   # https://wiki.gentoo.org/wiki/Kernel/Configuration
-  # But well-maintained deep-dives do not really exist; an archived copy of
+  # But well-maintained deep-dives do not really exist; an archived copy of a
   # series of dotslashlinux article can be found here:
   # https://web.archive.org/web/20180226135118/https://www.dotslashlinux.com/
 
@@ -238,16 +244,19 @@ parts:
       - bison
       - build-essential
       - flex
-      - gcc
       - libelf-dev
       - libssl-dev
       - make
+      - on "${CRAFT_ARCH_BUILD_FOR}":
+        - gcc
+      - on "${CRAFT_ARCH_BUILD_ON}" to "${CRAFT_ARCH_BUILD_FOR}":
+        - gcc-"${CRAFT_ARCH_TRIPLET-BUILD_FOR}"
     override-pull: |
       # Apply the necessary patches for building an Ubuntu Core compatible kernel
       # Namely, the apparmor feature is required.
       # The configs patch generates some useful config files in kernel/configs
       # which will help to generate a .config file for the kernel build which
-      # enable some mandatory (or just useful) kernel KCONFIG options
+      # enable some mandatory (or just useful) kernel KCONFIG options.
       # This is also a useful time to add other patches to add board support or
       # other features.
       for patch in "${CRAFT_PROJECT_DIR}/patches/"*.patch; do
@@ -256,8 +265,8 @@ parts:
     override-build: |
       # <platform>_defconfig is whatever the recommended defconfig is from the
       # board's manufacturer using their source tree. The additional .config
-      # files are configs created by configs.patch which add useful default
-      # KCONFIG values.
+      # files are configs created by patches/configs.patch which add useful
+      # default KCONFIG values.
       make <platform>_defconfig \
            generic.config       \
            containers.config    \
@@ -271,7 +280,7 @@ parts:
         modules_install
 
       # architecture folder names are pretty self-explanatory, and the image
-      # file is generally named one of bzImage or Image
+      # file is generally named one of bzImage or Image.
       # Ubuntu Core tradition demands that the kernel image be named kernel.img!
       install -Dm644 "arch/<arch>/boot/<image>" "${CRAFT_PART_INSTALL}/kernel.img"
 
@@ -336,20 +345,24 @@ parts:
   # to that kernel source tree should likewise suffice. The variable names can
   # vary, but standard practice is to use KDIR, KBASE, or KERNELDIR for the
   # kernel source location, and KVER or KERNELVER for the kernel version.
+  # The module's Makefile will disambiguate.
   module-foo:
     after: [kernel]
     plugin: nil
     source: module-foo-source
     build-packages:
       - build-essential
-      - gcc
       # The name of the linux-headers debian package, if using kernel debs
-      - linux-headers-generic
+      - linux-headers-<platform>:${CRAFT_ARCH_BUILD_FOR}
       - make
+      - on "${CRAFT_ARCH_BUILD_FOR}":
+        - gcc
+      - on "${CRAFT_ARCH_BUILD_ON}" to "${CRAFT_ARCH_BUILD_FOR}":
+        - gcc-"${CRAFT_ARCH_TRIPLET-BUILD_FOR}"
     override-build: |
       export kver="$(basename "${CRAFT_STAGE}/modules/"* | cut -f1 -d/)"
 
-      # Directory is with respect to the Makefile's location
+      # Kernel directory is with respect to the Makefile's location
       make KVER="${kver}" KBASE="${CRAFT_PART_BUILD}/../../kernel/"
 
       install -Dm644 "${CRAFT_PART_BUILD}/mod.ko" \
@@ -357,7 +370,9 @@ parts:
 
   # It's always important to make sure that the module information is accurate,
   # especially when things like out-of-tree modules have been built. The depmod tool
-  # handles this process quite well.
+  # handles this process quite well. A separate part for this is only necessary
+  # if out of tree modules have been built; otherwise, running depmod in the
+  # kernel part is sufficient.
   depmod:
     after: [module-foo, kernel]
     plugin: nil
@@ -366,7 +381,7 @@ parts:
       kver="$(basename "${CRAFT_STAGE}/modules/"* | cut -f1 -d/)"
       craftctl default
 
-      depmod -b . ${kver}
+      depmod -b "${CRAFT_PRIME}" "${kver}"
 
   # TODO: test this part once bug in core24 libfakechroot is resolved
   # The initrd (also called the initial ramdisk) is a stepping stone from the
@@ -414,8 +429,8 @@ parts:
   # image allows combining a kernel image, an initrd, and device trees into a
   # single package to be loaded and booted by u-boot, and provides the useful
   # safety check of a checksum to ensure integrity! A skeleton is included
-  # in the fit-image/ directory, see the 22-riscv64-polarfire branch for an
-  # example:
+  # in the fit-image/ directory.
+  # See the 22-riscv64-polarfire branch for an example:
   # https://github.com/canonical/iot-field-kernel-snap/blob/22-riscv64-polarfire/fit-image/fitImage-riscv64.its
   fit-image:
     after: [kernel, initrd]
@@ -427,8 +442,10 @@ parts:
         -f ${CRAFT_PART_SRC}/fitImage-${CRAFT_ARCH_BUILD_FOR}.its \
         ${CRAFT_PART_INSTALL}/kernel.img
 
-# There are several ways to load kernel modules on Ubuntu Core systems,
-# but they all come down to one of two interfaces:
+# One reason for building your own kernel snap is to include out of tree kernel
+# modules. This means that knowing how to load those modules (and blacklist
+# conflicting ones) is very important. There are several ways to load kernel
+# modules on Ubuntu Core systems, but it come down to one of two interfaces:
 # kernel-module-load: https://snapcraft.io/docs/kernel-module-load-interface
 #   kernel-module-load allows specifying modules by name to either load on-boot
 #   or dynamically (via snapctl kmod) with optional arguments, and a list of
@@ -437,6 +454,8 @@ parts:
 #   kernel-module-control gives broad sweeping control over any and all kernel
 #   modules which can be loaded or unloaded.
 # kernel-module-load should always be preferred as it is a more targetted interface.
+# In order for this interface to autoconnect, a support ticket must be filed or
+# a forum post made.
 plugs:
   load-module-foo:
     interface: kernel-module-load
