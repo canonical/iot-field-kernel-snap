@@ -114,7 +114,6 @@ parts:
   # kernel debian package can be downloaded and repackaged into a snap. This saves
   # time at the expense of a less "fine-tuned" kernel, but the kernel is
   # guaranteed to have all the required features for Ubuntu Core.
-  # TODO: test kernel plugin with deb package source
   # See the 22-arm64-odroid-hc4 branch for an example:
   # https://github.com/canonical/iot-field-kernel-snap/blob/22-arm64-odroid-hc4/snap/snapcraft.yaml
   kernel-deb:
@@ -193,8 +192,6 @@ parts:
     # For a list of all available otions, see the kernel plugin documentation:
     # TODO: change link to the plugin documentation. For now, the source works.
     # https://github.com/canonical/snapcraft/blob/main/snapcraft/parts/plugins/kernel_plugin.py
-    # TODO: are these build-packages required?
-    build-packages: [bison, flex, libelf-dev, libssl-dev]
     override-build: |
       # Build the kernel. The kernel plugin should do all of the correct things here.
       craftctl default
@@ -410,6 +407,7 @@ parts:
     initrd-configured-modules:
       - bar
       - baz
+    # TODO: do these build-packages need to be specified?
     build-packages:
       - busybox-initramfs:${CRAFT_ARCH_BUILD_FOR}
       - dosfstools:${CRAFT_ARCH_BUILD_FOR}
@@ -420,6 +418,7 @@ parts:
       - plymouth-label-ft:${CRAFT_ARCH_BUILD_FOR}
       - plymouth-theme-spinner:${CRAFT_ARCH_BUILD_FOR}
       - systemd-bootchart:${CRAFT_ARCH_BUILD_FOR}
+    # TODO: does this stage-package need to be specified?
     stage-packages:
       - systemd-boot-efi:${CRAFT_ARCH_BUILD_FOR}
 
