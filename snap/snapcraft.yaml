@@ -69,17 +69,17 @@ parts:
       depmod -a -b "${CRAFT_PART_INSTALL}" "$kver"
 
       mv -f "${CRAFT_PART_INSTALL}/lib/modules"          "${CRAFT_PART_INSTALL}"
-      mv -f "${CRAFT_PART_INSTALL}/boot/vmlinuz-${kver}" "${CRAFT_PART_INSTALL}"
+      mv -f "${CRAFT_PART_INSTALL}/boot/vmlinuz-${kver}" "${CRAFT_PART_INSTALL}/kernel.img"
 
       # Ubuntu Core expects modules/ to be a top-level directory in the snap,
       # but we must also maintain compatibility with things which expect it to
       # be in lib/modules/
       ln -sf ../modules "${CRAFT_PART_INSTALL}/lib/modules"
     stage:
+      - kernel.img
       - kver
       - lib/modules
       - modules/
-      - vmlinuz-*
     prime:
       - lib/modules
       - modules/
