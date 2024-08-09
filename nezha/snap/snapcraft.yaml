@@ -90,7 +90,9 @@ parts:
     source: https://git.launchpad.net/canonical-kernel-snaps
     source-depth: 1
     source-type: git
-    stage-packages: [linux-firmware, wireless-regdb]
+    stage-packages:
+      - linux-firmware:${CRAFT_ARCH_BUILD_FOR}
+      - wireless-regdb
     organize:
       lib/firmware: firmware/
     override-prime: |
