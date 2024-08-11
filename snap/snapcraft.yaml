@@ -50,8 +50,13 @@ parts:
   # can marginally reduce kernel snap size.
   kernel:
     plugin: nil
+    source: https://git.launchpad.net/canonical-kernel-snaps
+    source-depth: 1
+    source-type: git
     stage-packages:
       - linux-allwinner:${CRAFT_ARCH_BUILD_FOR}
+      - linux-firmware:${CRAFT_ARCH_BUILD_FOR}
+      - wireless-regdb
     override-build: |
       craftctl default
 
@@ -60,50 +65,37 @@ parts:
       # Set the version of the snap to match the kernel version.
       craftctl set version="$kver"
 
-      # The version of the snap is not queriable by other parts, unfortunately.
-      # Create a small file at build-time to share the version information with
-      # other parts.
-      echo $kver > "${CRAFT_PART_INSTALL}/kver"
-
       # Create the module information tree.
       depmod -a -b "${CRAFT_PART_INSTALL}" "$kver"
 
-      mv -f "${CRAFT_PART_INSTALL}/lib/modules"          "${CRAFT_PART_INSTALL}"
-      mv -f "${CRAFT_PART_INSTALL}/boot/vmlinuz-${kver}" "${CRAFT_PART_INSTALL}"
+      [ ! -d "${CRAFT_PART_INSTALL}/lib/modules" ] || {
+        mv -f "${CRAFT_PART_INSTALL}/lib/modules" "${CRAFT_PART_INSTALL}"
+      }
+      [ ! -d "${CRAFT_PART_INSTALL}/lib/firmware" ] || {
+        mv -f "${CRAFT_PART_INSTALL}/lib/firmware" "${CRAFT_PART_INSTALL}"
+      }
+
+      mv -f "${CRAFT_PART_INSTALL}/boot/"* "${CRAFT_PART_INSTALL}"
 
       # Ubuntu Core expects modules/ to be a top-level directory in the snap,
       # but we must also maintain compatibility with things which expect it to
       # be in lib/modules/
-      ln -sf ../modules "${CRAFT_PART_INSTALL}/lib/modules"
-    stage:
-      - kver
-      - lib/modules
-      - modules/
-      - vmlinuz-*
-    prime:
-      - lib/modules
-      - modules/
+      ln -sf ../modules  "${CRAFT_PART_INSTALL}/lib/modules"
+      ln -sf ../firmware "${CRAFT_PART_INSTALL}/lib/firmware"
 
-  firmware:
-    after: [kernel]
-    plugin: dump
-    source: https://git.launchpad.net/canonical-kernel-snaps
-    source-depth: 1
-    source-type: git
-    stage-packages:
-      - linux-firmware:${CRAFT_ARCH_BUILD_FOR}
-      - wireless-regdb
+      "${CRAFT_PART_SRC}/trim-firmware" "${CRAFT_PART_INSTALL}"
     organize:
-      lib/firmware: firmware/
-    override-prime: |
-      craftctl default
-
-      "${CRAFT_STAGE}/trim-firmware" "${CRAFT_PRIME}"
+      vmlinuz-*: kernel.img
     stage:
+      - config-*
       - firmware/
-      - trim-firmware
+      - kernel.img
+      - lib/firmware
+      - lib/modules
+      - modules/
+      - System.map*
     prime:
-      - firmware/
+      - -kernel.img
 
   # Provide the initrd for Ubuntu Core.
   # The initrd includes important things such as snap-bootstrap which
@@ -112,14 +104,7 @@ parts:
   # https://github.com/snapcore/snapd/blob/master/cmd/snap-bootstrap/README.md
   initrd:
     plugin: initrd
-    after: [kernel, firmware]
+    after: [kernel]
     initrd-build-efi-image: true
-    initrd-configured-modules:
-      - sunxi-mmc
-    build-snaps: [core24]
-    #stage-packages:
-    #  - systemd-boot-efi:${CRAFT_ARCH_BUILD_FOR}
-    #organize:
-    #  usr/lib/systemd/boot/efi/linuxriscv64.efi.stub: linuxriscv64.efi.stub
-    #stage:
-    #  - linuxriscv64.efi.stub
+    initrd-configured-modules: [sunxi-mmc]
+    build-snaps: [core24/latest/stable]
