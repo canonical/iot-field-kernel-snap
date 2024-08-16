@@ -21,15 +21,13 @@ description: |
 
   You can find any and all licenses for the contents of this snap at the following locations:
 
-  kernel:             https://git.launchpad.net/~canonical-kernel/ubuntu/+source/linux-riscv/+git/noble/tree/?h=allwinner-next
-  linux-firmware:     https://git.launchpad.net/ubuntu/+source/linux-firmware/tree/?h=applied/ubuntu/noble
-  rtl8723ds:          https://git.launchpad.net/ubuntu/+source/licheerv-rtl8723ds-dkms/tree/
-  rtl8723ds upstream: https://github.com/lwfinger/rtl8723ds
+  rtl8723ds:      https://github.com/lwfinger/rtl8723ds
+  linux-firmware: https://git.launchpad.net/ubuntu/+source/linux-firmware/tree/?h=applied/ubuntu/noble
+  kernel:         https://git.launchpad.net/~canonical-kernel/ubuntu/+source/linux-riscv/+git/noble/tree/?h=allwinner-next
 
-  Additional licenses can also be found within this snap in the licenses/ top-level directory.
+  All provided: licenses/
 
-# core24 is currently a devel-only base.
-grade: devel
+grade: stable
 confinement: strict
 
 license: "GPL-2.0 AND GPL-3.0 AND CC-BY-SA-4.0"
@@ -84,7 +82,11 @@ parts:
       ln -sf ../firmware "${CRAFT_PART_INSTALL}/lib/firmware"
 
       "${CRAFT_PART_SRC}/trim-firmware" "${CRAFT_PART_INSTALL}"
+
+      install -Dm644 "${CRAFT_PART_BUILD}/LICENSE" "${CRAFT_PART_INSTALL}/LICENSE"
     organize:
+      LICENSE: licenses/kernel.license
+      usr/share/doc/linux-firmware/licenses/*: licenses/
       vmlinuz-*: kernel.img
     stage:
       - config-*
@@ -128,6 +130,11 @@ parts:
 
       install -Dm0644 ${CRAFT_PART_BUILD}/8723ds.ko \
         -t ${CRAFT_STAGE}/modules/${kver}/net/wireless/
+
+      install -Dm644 "${CRAFT_PART_SRC}/COPYING" \
+        "${CRAFT_PART_INSTALL}/"
+    organize:
+      LICENSE: licenses/rtl8723ds.license
 
   # Provide the initrd for Ubuntu Core.
   # The initrd includes important things such as snap-bootstrap which
