@@ -42,3 +42,66 @@ jobs:
         with:
           snapcraft-channel: latest/edge
           snapcraft-args: --verbosity=verbose
+
+  build_24_riscv64_nezha_latest:
+    name: latest/edge job for 24-riscv64-nezha snap
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout 24-riscv64-nezha
+        uses: actions/checkout@v4
+        with:
+          ref: 24-riscv64-nezha
+      - name: Setup build environment
+        run: |
+          sudo sed -i '/Signed-By/a Architectures: amd64' /etc/apt/sources.list.d/ubuntu.sources
+          sudo sed -i 's/Types: deb/Types: deb deb-src/'  /etc/apt/sources.list.d/ubuntu.sources 
+          { echo 'Types: deb deb-src'; \
+            echo 'URIs: http://ports.ubuntu.com/ubuntu-ports'; \
+            echo 'Suites: noble noble-updates noble-backports'; \
+            echo 'Components: main universe restricted multiverse'; \
+            echo 'Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg'; \
+            echo 'Architectures: riscv64'; } | sudo tee -a /etc/apt/sources.list.d/ubuntu.sources
+
+          sudo ln -s /usr/riscv64-linux-gnu/lib/ld-linux-riscv64-lp64d.so.1 /lib
+
+          sudo dpkg --add-architecture riscv64
+
+          sudo apt update
+
+          git clone -b ubuntu/noble https://git.launchpad.net/~ondrak/ubuntu/+source/fakechroot && cd fakechroot
+
+          sudo apt install build-essential crossbuild-essential-riscv64 devscripts libc6:riscv64
+
+          tar cf - . | xz -z >> ../fakechroot_2.20.1+ds.orig.tar.xz
+
+          sudo apt build-dep -y -a riscv64 fakechroot
+          DEB_BUILD_OPTIONS=nocheck dpkg-buildpackage -us -uc -b -d --host-arch riscv64
+
+          sudo dpkg -i ../libfakechroot_*.deb
+          sudo apt build-dep -y fakechroot
+
+          DEB_BUILD_OPTIONS=nocheck dpkg-buildpackage -us -uc -b -d
+          sudo dpkg -i ../libfakechroot_*.deb
+          sudo dpkg -i ../fakechroot_*.deb
+
+          wget https://launchpad.net/~ondrak/+snap/snapcraft-kernel-initrd-split/+build/2570407/+files/snapcraft_8.3.2.post51+git473c12f7_amd64.snap
+
+          sudo snap install --dangerous --classic snapcraft*.snap
+
+          rm -rf *fakechroot* snapcraft*.snap
+      - name: Build 24-riscv64-nezha
+        id: build
+        env:
+          SNAPCRAFT_UA_TOKEN: ${{ secrets.UA_TOKEN }}
+          SNAPCRAFT_BUILD_INFO: 1
+          SNAPCRAFT_VERBOSITY_LEVEL: verbose
+        run: |
+          sed -i "s/name: /name: ${{ secrets.STORE_PREFIX }}-/" snap/snapcraft.yaml
+          sudo snapcraft --destructive-mode
+      - name: Upload 24-riscv64-nezha
+        uses: snapcore/action-publish@v1
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.STORE_LOGIN }}
+        with:
+          snap: ${{ steps.build.outputs.snap }}
+          release: edge
