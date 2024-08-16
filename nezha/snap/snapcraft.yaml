@@ -113,7 +113,6 @@ parts:
     build-environment:
       - on amd64 to riscv64:
         - ARCH: riscv
-        - CC: ${CRAFT_ARCH_TRIPLET_BUILD_FOR}-gcc-12
         - CROSS_COMPILE: ${CRAFT_ARCH_TRIPLET_BUILD_FOR}-
     build-packages:
       - make
