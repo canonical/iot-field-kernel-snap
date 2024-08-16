@@ -106,5 +106,5 @@ parts:
     plugin: initrd
     after: [kernel]
     initrd-build-efi-image: true
-    initrd-configured-modules: [sunxi-mmc]
+    initrd-configured-modules: [nls_iso8859-1, sunxi-mmc]
     build-snaps: [core24/latest/stable]
