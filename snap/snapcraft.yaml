@@ -97,6 +97,38 @@ parts:
     prime:
       - -kernel.img
 
+  # NOTE: WiFi is currently broken on the Nezha board.
+  # WiFi works fine on the Sipeed Lichee RV.
+  wlan-driver:
+    after: [kernel]
+    plugin: nil
+    # source: https://git.launchpad.net/ubuntu/+source/licheerv-rtl8723ds-dkms
+    source: https://github.com/lwfinger/rtl8723ds
+    source-type: git
+    source-depth: 1
+    source-branch: master
+    # source-branch: applied/ubuntu/noble-devel
+    build-environment:
+      - on amd64 to riscv64:
+        - ARCH: riscv
+        - CC: ${CRAFT_ARCH_TRIPLET_BUILD_FOR}-gcc-12
+        - CROSS_COMPILE: ${CRAFT_ARCH_TRIPLET_BUILD_FOR}-
+    build-packages:
+      - make
+      - bc
+      - on amd64 to riscv64:
+        - gcc-${CRAFT_ARCH_TRIPLET_BUILD_FOR}
+        - binutils-${CRAFT_ARCH_TRIPLET_BUILD_FOR}
+        - libc6-dev-${CRAFT_ARCH_BUILD_FOR}-cross
+      - on riscv64:
+        - gcc
+    override-build: |
+      export kver="$(basename ${CRAFT_STAGE}/modules/* | cut -f1 -d/)"
+      make KSRC="${CRAFT_PART_BUILD}/../../kernel/install/usr/src/linux-headers-${kver}" modules
+
+      install -Dm0644 ${CRAFT_PART_BUILD}/8723ds.ko \
+        -t ${CRAFT_STAGE}/modules/${kver}/net/wireless/
+
   # Provide the initrd for Ubuntu Core.
   # The initrd includes important things such as snap-bootstrap which
   # orchestrates the entire Ubuntu Core installation process. The documentation
@@ -104,7 +136,7 @@ parts:
   # https://github.com/snapcore/snapd/blob/master/cmd/snap-bootstrap/README.md
   initrd:
     plugin: initrd
-    after: [kernel]
+    after: [kernel, wlan-driver]
     initrd-build-efi-image: true
-    initrd-configured-modules: [nls_iso8859-1, sunxi-mmc]
+    initrd-configured-modules: [8723ds, nls_iso8859-1, sunxi-mmc]
     build-snaps: [core24/latest/stable]
