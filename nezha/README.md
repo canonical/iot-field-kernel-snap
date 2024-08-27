@@ -13,7 +13,7 @@ Alternatively, you can download a prebuilt version [here](https://launchpad.net/
 
 Instructions for building the snapcraft fork:
 
-```
+```sh
     git clone --branch split_kernel_initrd_plugins https://github.com/kubiko/snapcraft
     cd snapcraft
     snapcraft
@@ -44,7 +44,7 @@ building this snap different from others. Once [this](https:// github.com/canoni
 issue has been resolved, the below interventions should not be required. Until
 then, here are instructions for building this snap, assuming amd64 build host:
 
-```
+```sh
   lxc launch ubuntu:24.04 kernel-snaps
   lxc file push path/to/modified/snapcraft/snapcraft*.snap kernels-snap/root/
   lxc shell kernels-snap
@@ -63,19 +63,6 @@ then, here are instructions for building this snap, assuming amd64 build host:
 
   dpkg --add-architecture riscv64
   apt update
-
-  git clone -b ubuntu/noble https://git.launchpad.net/~ondrak/ubuntu/+source/fakechroot && cd fakechroot
-
-  apt install build-essential crossbuild-essential-riscv64 devscripts libc6:riscv64
-  tar cf - . | xz -z >> ../fakechroot_2.20.1+ds.orig.tar.xz
-  apt build-dep -y -a riscv64 fakechroot
-  DEB_BUILD_OPTIONS=nocheck dpkg-buildpackage -us -uc -b -d --host-arch riscv64
-  dpkg -i ../libfakechroot_*.deb
-
-  apt build-dep -y fakechroot
-  DEB_BUILD_OPTIONS=nocheck dpkg-buildpackage -us -uc -b -d
-  dpkg -i ../libfakechroot_*.deb
-  dpkg -i ../fakechroot_*.deb
 
   snap install --dangerous --classic /root/snapcraft*.snap
 
