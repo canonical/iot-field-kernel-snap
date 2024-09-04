@@ -325,10 +325,10 @@ parts:
   # demand from disk. The usual search location for firmware blobs is /lib/
   # firmware, though the device using the firmware might specify a different
   # location. Refer to the firmware's documentation.
-  firmware-one:
+  firmware-foo:
     after: [firmware]
     plugin: dump
-    source: firmware-one-source
+    source: firmware-foo-source
     # Be sure to also stage any licenses!
     stage:
       # The name of the firmware blob.
