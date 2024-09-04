@@ -407,21 +407,6 @@ parts:
     initrd-configured-modules:
       - bar
       - baz
-    # TODO: do these build-packages need to be specified?
-    build-packages:
-      - busybox-initramfs:${CRAFT_ARCH_BUILD_FOR}
-      - dosfstools:${CRAFT_ARCH_BUILD_FOR}
-      - fdisk:${CRAFT_ARCH_BUILD_FOR}
-      - kmod:${CRAFT_ARCH_BUILD_FOR}
-      - libdrm-common:all
-      - plymouth:${CRAFT_ARCH_BUILD_FOR}
-      - plymouth-label-ft:${CRAFT_ARCH_BUILD_FOR}
-      - plymouth-theme-spinner:${CRAFT_ARCH_BUILD_FOR}
-      - systemd-bootchart:${CRAFT_ARCH_BUILD_FOR}
-    # TODO: does this stage-package need to be specified?
-    stage-packages:
-      - systemd-boot-efi:${CRAFT_ARCH_BUILD_FOR}
-
   # On some platforms like arm64 or riscv64, it may be preferable to use
   # a flattened uImage tree (FIT) image. A FIT image can be built out of a
   # device-tree like file which declares some relevant files as nodes. A FIT
