@@ -411,6 +411,13 @@ parts:
     initrd-configured-modules:
       - bar
       - baz
+    # /etc/os-release of the build-base is copied into the initrd
+    # If the build-base is not installed in the build environment, then it must
+    # be specified. For instance, in a clean LXD container, only snapcraft's
+    # base will be installed. That base is not this snap's build-base, which
+    # means the build-base snap must be installed explciitly.
+    build-snaps: [coreXX/latest/stable]
+
   # On some platforms like arm64 or riscv64, it may be preferable to use
   # a flattened uImage tree (FIT) image. A FIT image can be built out of a
   # device-tree like file which declares some relevant files as nodes. A FIT
