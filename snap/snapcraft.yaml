@@ -230,7 +230,7 @@ parts:
   # Gentoo wiki:
   # https://wiki.gentoo.org/wiki/Kernel/Configuration
   # But well-maintained deep-dives do not really exist; an archived copy of a
-  # series of dotslashlinux article can be found here:
+  # series of dotslashlinux articles can be found here:
   # https://web.archive.org/web/20180226135118/https://www.dotslashlinux.com/
 
   # See the 22-arm64-orange-pi-5plus branch for an example:
