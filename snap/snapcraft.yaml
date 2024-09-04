@@ -16,13 +16,14 @@ name: <platform>-kernel
 adopt-info: kernel
 # Kernels should be built based on the release of Ubuntu Core being targetted,
 # but do not otherwise require a base as all other snaps do. As such, only a
-# build-base is required.
+# build-base is required, and should be something like core18|core20|core22 etc.
 build-base: <base>
 # The type is one of app|gadget|kernel|snapd, as this is a kernel snap...
 type: kernel
-# The grade should always be stable unless the kernel is using a devel-grade build-base.
+# The grade should always be stable unless the kernel is using a devel-grade
+# build-base. Options are stable|devel
 grade: stable
-# The confinement should always be strict.
+# The confinement should always be strict. Options are strict|devmode
 confinement: strict
 # The summary should be short and simple.
 summary: An Ubuntu Core kernel for the <platform>
@@ -50,6 +51,9 @@ description: |
 
 # At a minimum the snap should build natively.
 # See: https://snapcraft.io/docs/reference-architectures
+# <arch> options are amd64|arm64|armhf|ppc64el|riscv64|s390x
+# Note: i386 is legal for base: core{,18} snaps
+# Note: riscv64 is legal for base: core{20,22,24,...} snaps
 # For snaps with {build-,}base core22 and earlier, use the architectures syntax:
 architectures:
   # If only native builds are done, build-for can be omitted
