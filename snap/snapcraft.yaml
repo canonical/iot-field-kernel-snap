@@ -384,7 +384,6 @@ parts:
 
       depmod -b "${CRAFT_PRIME}" "${kver}"
 
-  # TODO: test this part once bug in core24 libfakechroot is resolved
   # The initrd (also called the initial ramdisk) is a stepping stone from the
   # kernel to final userspace. The initrd could be anything from a simple shell
   # script built directly into the kernel to a complex root filesystem complete
