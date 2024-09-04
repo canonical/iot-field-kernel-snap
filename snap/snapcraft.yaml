@@ -402,7 +402,20 @@ parts:
     after: [firmware, kernel]
     # The initrd plugin handles the work of running ubuntu-core-initramfs
     plugin: initrd
-    # Set this to false if only an initrd.img is required (you are building a FIT image)
+    # Set this to true if:
+    #  * the gadget bootloader is GRUB
+    #  * the gadget bootloader can boot UKIs
+    # Set this to false if:
+    #  * the gadget bootloader is u-boot, but it is booting a FIT image
+    #    This means that the kernel.img, initrd.img, and DTB will be in single FIT blob
+    #  * the gadget bootloader is u-boot, but it is booting discrete parts
+    #    This means that the kernel.img, initrd.img, and DTB will be separate files
+    # The gadget should explain what is required. For example,
+    #  * the IoT Field example gadget on the main branch uses a UKI or FIT image, see:
+    #    https://github.com/canonical/iot-field-gadget-snap/blob/main/grub/grub.builtin
+    #    https://github.com/canonical/iot-field-gadget-snap/blob/main/u-boot/boot.scr.in
+    #  * the  IoT Field example gadget on the 22-arm64-odroid-hc4 branch uses separate files:
+    #    https://github.com/canonical/iot-field-gadget-snap/blob/22-arm64-odroid-hc4/u-boot/boot.scr
     initrd-build-efi-image: true
     # NOTE: any modules required for booting the target hardware (like those
     # required to mount the root filesystem, such as squashfs or mmc drivers)
