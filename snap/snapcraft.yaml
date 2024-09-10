@@ -70,12 +70,6 @@ parts:
 
       # Set the version of the snap to match the kernel version.
       craftctl set version="${kver}"
-
-      # Specify that the snap provides the device trees for the gadget snap to
-      # consume Doing this is a requirement for leveraging the [kernel-assets]
-      # assumption and the $kernel:<foo> syntax in the gadget's gadget.yaml
-      install -Dm644 "${CRAFT_PROJECT_DIR}/kernel.yaml" \
-        "${CRAFT_PART_INSTALL}/meta/kernel.yaml"
     stage:
       - dtbs/starfive/
       - lib/firmware
