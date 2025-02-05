@@ -1,4 +1,4 @@
-# Nezha kernel snap
+# The kernel snap
 
 ## Notice
 
@@ -27,8 +27,8 @@ If you instead opt to download a prebuilt snap, just do the last line from above
 
 This snap is built out of three components:
 
-1) The official debian Nezha kernel,
-2) An unofficial driver for the RTL8723DS, and
+1) The official Debian Nezha kernel,
+2) The Debian linux firmware package, and
 3) An initrd built from a minimal Noble base image
 
 It is intended for use by both the Nezha and Sipeed LicheeRV boards, one very
@@ -40,7 +40,7 @@ to facilitate experimentation and native building.
 ## Building
 
 In order to build this kernel snap some small changes must be made which make
-building this snap different from others. Once [this](https:// github.com/canonical/craft-archives/issues/104) 
+building this snap different from others. Once [this](https://github.com/canonical/craft-archives/issues/104) 
 issue has been resolved, the below interventions should not be required. Until
 then, here are instructions for building this snap, assuming amd64 build host:
 
