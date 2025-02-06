@@ -2,3 +2,5 @@
 /prime
 /stage
 /*.snap
+/*.comp
+/squashfs-root
