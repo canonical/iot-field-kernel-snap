@@ -21,9 +21,8 @@ description: |
 
   You can find any and all licenses for the contents of this snap at the following locations:
 
-  rtl8723ds:      https://github.com/lwfinger/rtl8723ds
   linux-firmware: https://git.launchpad.net/ubuntu/+source/linux-firmware/tree/?h=applied/ubuntu/noble
-  kernel:         https://git.launchpad.net/~canonical-kernel/ubuntu/+source/linux-riscv/+git/noble/tree/?h=allwinner-next
+  kernel:         https://git.launchpad.net/~canonical-kernel/ubuntu/+source/linux-riscv/+git/noble/
 
   All provided: licenses/
 
