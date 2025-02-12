@@ -113,14 +113,14 @@ to facilitate experimentation and native building.
 If you built the above fork with the given patch, these instructions are unnecessary.
 
 In order to build this kernel snap some small changes must be made which make
-building this snap different from others. Once [this](https://github.com/canonical/craft-archives/issues/104) 
-issue has been resolved, the below interventions should not be required. Until
+building this snap different from others. Once [this](https://github.com/canonical/snapcraft/pull/5233) 
+PR has been merged, the below interventions should not be required. Until
 then, here are instructions for building this snap, assuming amd64 build host:
 
 ```sh
   lxc launch ubuntu:24.04 kernel-snaps
-  lxc file push path/to/modified/snapcraft/snapcraft*.snap kernels-snap/root/
-  lxc shell kernels-snap
+  lxc file push path/to/modified/snapcraft/snapcraft*.snap kernel-snaps/root/
+  lxc shell kernel-snaps
 
   sed -i '/Signed-By/a Architectures: amd64' /etc/apt/sources.list.d/ubuntu.sources
   sed -i 's/Types: deb/Types: deb deb-src/'  /etc/apt/sources.list.d/ubuntu.sources 
@@ -139,7 +139,11 @@ then, here are instructions for building this snap, assuming amd64 build host:
 
   snap install --dangerous --classic /root/snapcraft*.snap
 
-  git clone -b 24-riscv64-nezha -d 1 https://github.com/canonical/iot-field-kernel-snap 24-riscv64-nezha-kernel && cd 24-riscv64-nezha-kernel
+  git clone \
+    --branch 24-riscv64-nezha \
+    --depth 1 \
+    https://github.com/canonical/iot-field-kernel-snap \
+    24-riscv64-nezha-kernel && cd 24-riscv64-nezha-kernel
 
   snapcraft --destructive-mode
 ```
