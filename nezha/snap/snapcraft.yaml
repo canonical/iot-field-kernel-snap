@@ -86,13 +86,6 @@ parts:
       - linux-firmware:${CRAFT_ARCH_BUILD_FOR}
       - wireless-regdb
     override-build: |
-      # Ensure the symlink the kernel plugin creates doesn't annihilate the
-      # firmware files This directory will exist because linux-firmware is
-      # unpacked before the plugin's default behavior runs
-      [ -e "${CRAFT_PART_INSTALL}/firmware" ] || {
-        mv -f "${CRAFT_PART_INSTALL}/lib/firmware" "${CRAFT_PART_INSTALL}/firmware"
-      }
-
       craftctl default
 
       kver="$(basename "${CRAFT_PART_INSTALL}/lib/modules/"*)"
