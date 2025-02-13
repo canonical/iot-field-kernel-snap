@@ -99,9 +99,11 @@ parts:
       install -Dm644 "${CRAFT_PART_SRC}/LICENSES/exceptions/Linux-syscall-note" \
                      "${CRAFT_PART_INSTALL}/LICENSE.exception"
 
+      # Create directories that are canonically expected to exist
       ln -sf ../../../src   "${CRAFT_PART_INSTALL}/lib/modules/${kver}/source"
       ln -sf ../../../build "${CRAFT_PART_INSTALL}/lib/modules/${kver}/build"
 
+      # Build the rtl8723ds kernel module
       cd "${CRAFT_PART_INSTALL}/usr/src/licheerv-rtl8723ds-"*
 
       make -j${CRAFT_PARALLEL_BUILD_COUNT} \
@@ -109,7 +111,16 @@ parts:
         KSRC="${CRAFT_PART_INSTALL}/lib/modules/${kver}/build" \
         modules
 
+      # First, regenerate module dependency list
       install -Dm644 8723ds.ko \
+        "${CRAFT_PART_INSTALL}/lib/modules/${kver}/kernel/drivers/net/wireless/8723ds.ko"
+
+      depmod -a -b "${CRAFT_PART_INSTALL}/" "${kver}"
+
+      # Then, move the module into the component
+      mkdir -p "${CRAFT_COMPONENT_WLAN_PRIME}/lib/modules/${kver}/kernel/drivers/net/wireless"
+
+      mv -f "${CRAFT_PART_INSTALL}/modules/${kver}/kernel/drivers/net/wireless/8723ds.ko" \
         "${CRAFT_COMPONENT_WLAN_PRIME}/lib/modules/${kver}/kernel/drivers/net/wireless/8723ds.ko"
 
       mv -f "${CRAFT_PART_INSTALL}/firmware/rtl_bt" "${CRAFT_PART_INSTALL}/rtl_bt"
