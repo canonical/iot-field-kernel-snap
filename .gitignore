@@ -1,0 +1,11 @@
+# Snap build artifacts from --destructive-mode which shouldn't be committed
+parts/
+prime/
+stage/
+
+# Snap artifacts which shouldn't be committed
+*.snap
+*.comp
+
+# Temp files which shouldn't be committed
+*.swp
