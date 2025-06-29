@@ -605,8 +605,9 @@ parts:
 components:
   wlan:
     type: kernel-modules
-    # It would be nice if the component version could be set by the kernel part
-    version: 6.8.0-53.55-generic
+    # It would be nice if the component version could be set by the kernel part.
+    # This version string may (probably will) fall out of sync.
+    version: 6.8.0-generic
     summary: The Realtek 8723ds WiFi module and firmware
     description: |
       The 8723ds Realtek WiFi kernel module used by the Sipeed LicheeRV. This
