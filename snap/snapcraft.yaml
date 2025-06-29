@@ -35,15 +35,13 @@ architectures:
   - build-on:  [amd64]
     build-for: [riscv64]
 
-# In an ideal universe, this would be all we would have to do. Unfortunately,
-# the workaround in the README is required for core22 builds.
-# package-repositories:
-#   - type: apt
-#     components: [main, universe]
-#     architectures: [riscv64]
-#     suites: [jammy, jammy-updates]
-#     key-id: F6ECB3762474EDA9D21B7022871920D1991BC93C
-#     url: http://ports.ubuntu.com/ubuntu-ports
+package-repositories:
+  - type: apt
+    components: [main, universe]
+    architectures: [riscv64]
+    suites: [jammy, jammy-updates]
+    key-id: F6ECB3762474EDA9D21B7022871920D1991BC93C
+    url: http://ports.ubuntu.com/ubuntu-ports
 
 parts:
   # Trimming any firmware we know a priori to not be needed by the target device
