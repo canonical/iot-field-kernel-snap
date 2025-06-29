@@ -1,0 +1,8 @@
+# Snap build artifacts from --destructive-mode which shouldn't be committed
+parts/
+stage/
+prime/
+
+# Snap artifacts which shouldn't be committed
+*.snap
+*.comp
