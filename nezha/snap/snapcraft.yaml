@@ -82,7 +82,6 @@ parts:
     build-packages:
       - gcc-${CRAFT_ARCH_TRIPLET_BUILD_FOR}
     stage-packages:
-      - licheerv-rtl8723ds-dkms:${CRAFT_ARCH_BUILD_FOR}
       - linux-firmware:${CRAFT_ARCH_BUILD_FOR}
       - wireless-regdb
     override-build: |
@@ -99,39 +98,13 @@ parts:
       install -Dm644 "${CRAFT_PART_SRC}/LICENSES/exceptions/Linux-syscall-note" \
                      "${CRAFT_PART_INSTALL}/LICENSE.exception"
 
-      # Create directories that are canonically expected to exist
-      ln -sf ../../../src   "${CRAFT_PART_INSTALL}/lib/modules/${kver}/source"
-      ln -sf ../../../build "${CRAFT_PART_INSTALL}/lib/modules/${kver}/build"
-
-      # Build the rtl8723ds kernel module
-      cd "${CRAFT_PART_INSTALL}/usr/src/licheerv-rtl8723ds-"*
-
-      make -j${CRAFT_PARALLEL_BUILD_COUNT} \
-        ARCH=riscv CROSS_COMPILE=riscv64-linux-gnu- \
-        KSRC="${CRAFT_PART_INSTALL}/lib/modules/${kver}/build" \
-        modules
-
-      # First, regenerate module dependency list
-      install -Dm644 8723ds.ko \
-        "${CRAFT_PART_INSTALL}/lib/modules/${kver}/kernel/drivers/net/wireless/8723ds.ko"
-
-      depmod -a -b "${CRAFT_PART_INSTALL}/" "${kver}"
-
-      # Then, move the module into the component
-      mkdir -p "${CRAFT_COMPONENT_WLAN_PRIME}/lib/modules/${kver}/kernel/drivers/net/wireless"
-
-      mv -f "${CRAFT_PART_INSTALL}/modules/${kver}/kernel/drivers/net/wireless/8723ds.ko" \
-        "${CRAFT_COMPONENT_WLAN_PRIME}/lib/modules/${kver}/kernel/drivers/net/wireless/8723ds.ko"
-
-      mv -f "${CRAFT_PART_INSTALL}/firmware/rtl_bt" "${CRAFT_PART_INSTALL}/rtl_bt"
-
       "${CRAFT_STAGE}/trim-firmware" "${CRAFT_PART_INSTALL}"
     organize:
-       LICENSE: licenses/kernel.license
-       LICENSE.exception: licenses/kernel.license-exception
-       dtbs/allwinner: dtbs/
-       rtl_bt/rtl8723d_config.bin: (component/wlan)/firmware/rtl_bt/rtl8723d_config.bin
-       rtl_bt/rtl8723d_fw.bin: (component/wlan)/firmware/rtl_bt/rtl8723d_fw.bin
+      LICENSE: licenses/kernel.license
+      LICENSE.exception: licenses/kernel.license-exception
+      dtbs/allwinner: dtbs/
+      rtl_bt/rtl8723d_fw.bin: (component/wlan)/firmware/rtl_bt/rtl8723d_fw.bin
+      rtl_bt/rtl8723d_config.bin: (component/wlan)/firmware/rtl_bt/rtl8723d_config.bin
     stage:
       - System.map-*
       - config-*
@@ -147,6 +120,34 @@ parts:
       - modules/
     prime:
       - -kernel.img
+
+  wlan:
+    after: [kernel]
+    plugin: nil
+    source: https://git.launchpad.net/ubuntu/+source/licheerv-rtl8723ds-dkms
+    source-type: git
+    source-depth: 1
+    source-branch: applied/ubuntu/jammy-updates
+    build-packages: [build-essential, dkms]
+    override-build: |
+      kver="$(basename "${CRAFT_STAGE}/lib/modules/"*)"
+      driver_path="lib/modules/${kver}/kernel/drivers/net/wireless"
+
+      make -j${CRAFT_PARALLEL_BUILD_COUNT} \
+        ARCH=riscv CROSS_COMPILE=riscv64-linux-gnu- \
+        KSRC="${CRAFT_PART_BUILD}/../../kernel/build" \
+        modules
+
+      install -Dm644 8723ds.ko "${CRAFT_COMPONENT_WLAN_PRIME}/${driver_path}/8723ds.ko"
+    override-stage: |
+      kver="$(basename "${CRAFT_STAGE}/lib/modules/"*)"
+
+      craftctl default
+
+      # Regenerate module dependency list
+      depmod -a -b "${CRAFT_STAGE}/" "${kver}"
+    stage:
+      - -8723ds.ko
 
   # Provide the initrd for Ubuntu Core.
   # The initrd includes important things such as snap-bootstrap which
