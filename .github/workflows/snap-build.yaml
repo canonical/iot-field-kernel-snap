@@ -49,6 +49,7 @@ jobs:
           wget https://github.com/canonical/iot-field-kernel-snap/releases/download/temp/snapcraft_8.10.0.post45_amd64.snap
 
           sudo snap install --dangerous --classic snapcraft*.snap
+          sudo apt install qemu-user-static
 
           rm -f snapcraft*.snap
       - name: Build 22/nezha
@@ -82,6 +83,7 @@ jobs:
           wget https://github.com/canonical/iot-field-kernel-snap/releases/download/temp/snapcraft_8.10.0.post45_amd64.snap
 
           sudo snap install --dangerous --classic snapcraft*.snap
+          sudo apt install qemu-user-static
 
           rm -f snapcraft*.snap
       - name: Build 22/odroid-hc4
@@ -116,6 +118,7 @@ jobs:
           wget https://github.com/canonical/iot-field-kernel-snap/releases/download/temp/snapcraft_8.10.0.post45_amd64.snap
 
           sudo snap install --dangerous --classic snapcraft*.snap
+          sudo apt install qemu-user-static
 
           rm -f snapcraft*.snap
       - name: Build 22/orangepi-5plus
@@ -150,6 +153,7 @@ jobs:
           wget https://github.com/canonical/iot-field-kernel-snap/releases/download/temp/snapcraft_8.10.0.post45_amd64.snap
 
           sudo snap install --dangerous --classic snapcraft*.snap
+          sudo apt install qemu-user-static
 
           rm -f snapcraft*.snap
       - name: Build 22/polarfire-icicle
@@ -187,6 +191,7 @@ jobs:
           wget https://github.com/canonical/iot-field-kernel-snap/releases/download/temp/snapcraft_8.10.0.post45_amd64.snap
 
           sudo snap install --dangerous --classic snapcraft*.snap
+          sudo apt install qemu-user-static
 
           rm -f snapcraft*.snap
       - name: Build 24/nezha
@@ -220,6 +225,7 @@ jobs:
           wget https://github.com/canonical/iot-field-kernel-snap/releases/download/temp/snapcraft_8.10.0.post45_amd64.snap
 
           sudo snap install --dangerous --classic snapcraft*.snap
+          sudo apt install qemu-user-static
 
           rm -f snapcraft*.snap
       - name: Build 24/visionfive2
