@@ -61,7 +61,7 @@ jobs:
         run: |
           cd nezha
           sed -i "s/name: /name: ${{ secrets.STORE_PREFIX }}-/" snap/snapcraft.yaml
-          sudo snapcraft --enable-experimental-plugins
+          sudo snapcraft --enable-experimental-plugins --destructive-mode
       - name: Upload 22/nezha
         uses: snapcore/action-publish@v1
         env:
@@ -94,7 +94,7 @@ jobs:
         run: |
           cd odroid-hc4
           sed -i "s/name: /name: ${{ secrets.STORE_PREFIX }}-/" snap/snapcraft.yaml
-          sudo snapcraft --enable-experimental-plugins
+          sudo snapcraft --enable-experimental-plugins --destructive-mode
       ## Not being maintained...
       - name: Upload 22/odroid-hc4
         uses: snapcore/action-publish@v1
@@ -128,7 +128,7 @@ jobs:
         run: |
           cd orangepi-5plus
           sed -i "s/name: /name: ${{ secrets.STORE_PREFIX }}-/" snap/snapcraft.yaml
-          sudo snapcraft --enable-experimental-plugins
+          sudo snapcraft --enable-experimental-plugins --destructive-mode
       ## Not being maintained...
       - name: Upload latest/edge
         uses: snapcore/action-publish@v1
@@ -162,7 +162,7 @@ jobs:
         run: |
           cd polarfire-icicle
           sed -i "s/name: /name: ${{ secrets.STORE_PREFIX }}-/" snap/snapcraft.yaml
-          sudo snapcraft --enable-experimental-plugins
+          sudo snapcraft --enable-experimental-plugins --destructive-mode
       ## Not being maintained...
       - name: Upload 22/polarfire-icicle
         uses: snapcore/action-publish@v1
@@ -199,7 +199,7 @@ jobs:
         run: |
           cd nezha
           sed -i "s/name: /name: ${{ secrets.STORE_PREFIX }}-/" snap/snapcraft.yaml
-          sudo snapcraft
+          sudo snapcraft --destructive-mode
       - name: Upload 24/nezha
         uses: snapcore/action-publish@v1
         env:
@@ -232,7 +232,7 @@ jobs:
         run: |
           cd visionfive2
           sed -i "s/name: /name: ${{ secrets.STORE_PREFIX }}-/" snap/snapcraft.yaml
-          sudo snapcraft
+          sudo snapcraft --destructive-mode
       - name: Upload 24/visionfive2
         uses: snapcore/action-publish@v1
         env:
