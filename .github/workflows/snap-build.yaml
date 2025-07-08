@@ -77,7 +77,12 @@ jobs:
         with:
           ref: 22
       - name: Setup build environment
-        run:
+        run: |
+          wget https://github.com/canonical/iot-field-kernel-snap/releases/download/temp/snapcraft_8.10.0.post45_amd64.snap
+
+          sudo snap install --dangerous --classic snapcraft*.snap
+
+          rm -f snapcraft*.snap
       - name: Build 22/odroid-hc4
         id: build
         env:
@@ -230,4 +235,3 @@ jobs:
           snap: ${{ steps.build.outputs.snap }}
           # TODO: get a 24 track
           release: latest/edge
-
