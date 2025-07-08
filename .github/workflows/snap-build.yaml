@@ -138,8 +138,8 @@ jobs:
           snap: ${{ steps.build.outputs.snap }}
           release: latest/edge
 
-  polarfire_22:
-    name: latest/edge job for 22/polarfire
+  polarfire-icicle_22:
+    name: latest/edge job for 22/polarfire-icicle
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
@@ -152,7 +152,7 @@ jobs:
           sudo snap install --dangerous --classic snapcraft*.snap
 
           rm -f snapcraft*.snap
-      - name: Build 22/polarfire
+      - name: Build 22/polarfire-icicle
         id: build
         env:
           SNAPCRAFT_UA_TOKEN: ${{ secrets.UA_TOKEN }}
@@ -164,7 +164,7 @@ jobs:
           sed -i "s/name: /name: ${{ secrets.STORE_PREFIX }}-/" snap/snapcraft.yaml
           sudo snapcraft --enable-experimental-plugins
       ## Not being maintained...
-      - name: Upload 22/polarfire
+      - name: Upload 22/polarfire-icicle
         uses: snapcore/action-publish@v1
         env:
           SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.STORE_LOGIN }}
