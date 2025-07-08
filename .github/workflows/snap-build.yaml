@@ -156,7 +156,7 @@ jobs:
           SNAPCRAFT_BUILD_INFO: 1
           SNAPCRAFT_VERBOSITY_LEVEL: verbose
         run: |
-          cd polarfire
+          cd polarfire-icicle
           sed -i "s/name: /name: ${{ secrets.STORE_PREFIX }}-/" snap/snapcraft.yaml
           sudo snapcraft --enable-experimental-plugins
       ## Not being maintained...
