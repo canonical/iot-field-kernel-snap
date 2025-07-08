@@ -12,6 +12,11 @@ on:
     - cron: '0 12 * * MON'
   workflow_dispatch:
 
+# In an ideal world, GitHub actions would support anchors in action yaml.
+# Luckily, it looks like this may be coming in the next few months:
+# https://github.com/actions/runner/issues/1182#issuecomment-2722005293
+# TODO: implement anchors. Will save a ton of vertical space.
+
 # Convention:
 # jobs:
 #   build_<branch name>_<snapcraft track>:
@@ -28,80 +33,201 @@ on:
 #           snapcraft-channel: <track>/<risk>/<branch>
 #           snapcraft-args: --verbosity=verbose
 
+##########
+### 22 ###
+##########
 jobs:
-  build_22_amd64_pc_latest:
-    name: latest/edge job for 22-amd64-pc snap
+  nezha_22:
+    name: latest/edge job for 22/nezha
     runs-on: ubuntu-22.04
     steps:
-      - name: Checkout 22-amd64-pc
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          ref: 22-amd64-pc
-      - name: Test build of 22-amd64-pc
-        uses: snapcore/action-build@v1
-        with:
-          snapcraft-channel: latest/edge
-          snapcraft-args: --verbosity=verbose
-
-  build_24_riscv64_nezha_latest:
-    name: latest/edge job for 24-riscv64-nezha snap
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout 24-riscv64-nezha
-        uses: actions/checkout@v4
-        with:
-          ref: 24-riscv64-nezha
+          ref: 22
       - name: Setup build environment
         run: |
-          sudo sed -i '/Signed-By/a Architectures: amd64' /etc/apt/sources.list.d/ubuntu.sources
-          sudo sed -i 's/Types: deb/Types: deb deb-src/'  /etc/apt/sources.list.d/ubuntu.sources 
-          { echo 'Types: deb deb-src'; \
-            echo 'URIs: http://ports.ubuntu.com/ubuntu-ports'; \
-            echo 'Suites: noble noble-updates noble-backports'; \
-            echo 'Components: main universe restricted multiverse'; \
-            echo 'Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg'; \
-            echo 'Architectures: riscv64'; } | sudo tee -a /etc/apt/sources.list.d/ubuntu.sources
-
-          sudo ln -s /usr/riscv64-linux-gnu/lib/ld-linux-riscv64-lp64d.so.1 /lib
-
-          sudo dpkg --add-architecture riscv64
-
-          sudo apt update
-
-          git clone -b ubuntu/noble https://git.launchpad.net/~ondrak/ubuntu/+source/fakechroot && cd fakechroot
-
-          sudo apt install build-essential crossbuild-essential-riscv64 devscripts libc6:riscv64
-
-          tar cf - . | xz -z >> ../fakechroot_2.20.1+ds.orig.tar.xz
-
-          sudo apt build-dep -y -a riscv64 fakechroot
-          DEB_BUILD_OPTIONS=nocheck dpkg-buildpackage -us -uc -b -d --host-arch riscv64
-
-          sudo dpkg -i ../libfakechroot_*.deb
-          sudo apt build-dep -y fakechroot
-
-          DEB_BUILD_OPTIONS=nocheck dpkg-buildpackage -us -uc -b -d
-          sudo dpkg -i ../libfakechroot_*.deb
-          sudo dpkg -i ../fakechroot_*.deb
-
-          wget https://launchpad.net/~ondrak/+snap/snapcraft-kernel-initrd-split/+build/2570407/+files/snapcraft_8.3.2.post51+git473c12f7_amd64.snap
+          wget https://github.com/canonical/iot-field-kernel-snap/releases/download/temp/snapcraft_8.9.4.post82_amd64.snap
 
           sudo snap install --dangerous --classic snapcraft*.snap
 
-          rm -rf *fakechroot* snapcraft*.snap
-      - name: Build 24-riscv64-nezha
+          rm -f snapcraft*.snap
+      - name: Build 22/nezha
         id: build
         env:
           SNAPCRAFT_UA_TOKEN: ${{ secrets.UA_TOKEN }}
           SNAPCRAFT_BUILD_INFO: 1
           SNAPCRAFT_VERBOSITY_LEVEL: verbose
         run: |
+          cd nezha
           sed -i "s/name: /name: ${{ secrets.STORE_PREFIX }}-/" snap/snapcraft.yaml
-          sudo snapcraft --destructive-mode
-      - name: Upload 24-riscv64-nezha
+          sudo snapcraft --enable-experimental-plugins
+      - name: Upload 22/nezha
         uses: snapcore/action-publish@v1
         env:
           SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.STORE_LOGIN }}
         with:
           snap: ${{ steps.build.outputs.snap }}
-          release: edge
+          release: 22/edge
+
+  odroid-hc4_22:
+    name: latest/edge job for 22/odroid-hc4
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 22
+      - name: Setup build environment
+        run:
+      - name: Build 22/odroid-hc4
+        id: build
+        env:
+          SNAPCRAFT_UA_TOKEN: ${{ secrets.UA_TOKEN }}
+          SNAPCRAFT_BUILD_INFO: 1
+          SNAPCRAFT_VERBOSITY_LEVEL: verbose
+        run: |
+          cd odroid-hc4
+          sed -i "s/name: /name: ${{ secrets.STORE_PREFIX }}-/" snap/snapcraft.yaml
+          sudo snapcraft --enable-experimental-plugins
+      ## Not being maintained...
+      - name: Upload 22/odroid-hc4
+        uses: snapcore/action-publish@v1
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.STORE_LOGIN }}
+        with:
+          snap: ${{ steps.build.outputs.snap }}
+          release: latest/edge
+
+  orangepi-5plus_22:
+    name: latest/edge job for 22/orangepi-5plus
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 22
+      - name: Setup build environment
+        run: |
+          wget https://github.com/canonical/iot-field-kernel-snap/releases/download/temp/snapcraft_8.9.4.post82_amd64.snap
+
+          sudo snap install --dangerous --classic snapcraft*.snap
+
+          rm -f snapcraft*.snap
+      - name: Build 22/orangepi-5plus
+        id: build
+        env:
+          SNAPCRAFT_UA_TOKEN: ${{ secrets.UA_TOKEN }}
+          SNAPCRAFT_BUILD_INFO: 1
+          SNAPCRAFT_VERBOSITY_LEVEL: verbose
+        run: |
+          cd orangepi-5plus
+          sed -i "s/name: /name: ${{ secrets.STORE_PREFIX }}-/" snap/snapcraft.yaml
+          sudo snapcraft --enable-experimental-plugins
+      ## Not being maintained...
+      - name: Upload latest/edge
+        uses: snapcore/action-publish@v1
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.STORE_LOGIN }}
+        with:
+          snap: ${{ steps.build.outputs.snap }}
+          release: latest/edge
+
+  polarfire_22:
+    name: latest/edge job for 22/polarfire
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 22
+      - name: Setup build environment
+        run: |
+          wget https://github.com/canonical/iot-field-kernel-snap/releases/download/temp/snapcraft_8.9.4.post82_amd64.snap
+
+          sudo snap install --dangerous --classic snapcraft*.snap
+
+          rm -f snapcraft*.snap
+      - name: Build 22/polarfire
+        id: build
+        env:
+          SNAPCRAFT_UA_TOKEN: ${{ secrets.UA_TOKEN }}
+          SNAPCRAFT_BUILD_INFO: 1
+          SNAPCRAFT_VERBOSITY_LEVEL: verbose
+        run: |
+          cd polarfire
+          sed -i "s/name: /name: ${{ secrets.STORE_PREFIX }}-/" snap/snapcraft.yaml
+          sudo snapcraft --enable-experimental-plugins
+      ## Not being maintained...
+      - name: Upload 22/polarfire
+        uses: snapcore/action-publish@v1
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.STORE_LOGIN }}
+        with:
+          snap: ${{ steps.build.outputs.snap }}
+          release: latest/edge
+
+##########
+### 24 ###
+##########
+  nezha_24:
+    name: latest/edge job for 24/nezha
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 24
+      - name: Setup build environment
+        run: |
+          wget https://github.com/canonical/iot-field-kernel-snap/releases/download/temp/snapcraft_8.9.4.post82_amd64.snap
+
+          sudo snap install --dangerous --classic snapcraft*.snap
+
+          rm -f snapcraft*.snap
+      - name: Build 24/nezha
+        id: build
+        env:
+          SNAPCRAFT_UA_TOKEN: ${{ secrets.UA_TOKEN }}
+          SNAPCRAFT_BUILD_INFO: 1
+          SNAPCRAFT_VERBOSITY_LEVEL: verbose
+        run: |
+          cd nezha
+          sed -i "s/name: /name: ${{ secrets.STORE_PREFIX }}-/" snap/snapcraft.yaml
+          sudo snapcraft
+      - name: Upload 24/nezha
+        uses: snapcore/action-publish@v1
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.STORE_LOGIN }}
+        with:
+          snap: ${{ steps.build.outputs.snap }}
+          release: 24/edge
+
+  visionfive2_24:
+    name: latest/edge job for 24/visionfive2
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 24
+      - name: Setup build environment
+        run: |
+          wget https://github.com/canonical/iot-field-kernel-snap/releases/download/temp/snapcraft_8.9.4.post82_amd64.snap
+
+          sudo snap install --dangerous --classic snapcraft*.snap
+
+          rm -f snapcraft*.snap
+      - name: Build 24/visionfive2
+        id: build
+        env:
+          SNAPCRAFT_UA_TOKEN: ${{ secrets.UA_TOKEN }}
+          SNAPCRAFT_BUILD_INFO: 1
+          SNAPCRAFT_VERBOSITY_LEVEL: verbose
+        run: |
+          cd visionfive2
+          sed -i "s/name: /name: ${{ secrets.STORE_PREFIX }}-/" snap/snapcraft.yaml
+          sudo snapcraft
+      - name: Upload 24/visionfive2
+        uses: snapcore/action-publish@v1
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.STORE_LOGIN }}
+        with:
+          snap: ${{ steps.build.outputs.snap }}
+          # TODO: get a 24 track
+          release: latest/edge
+
