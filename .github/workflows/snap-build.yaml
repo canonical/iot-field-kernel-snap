@@ -46,7 +46,7 @@ jobs:
           ref: 22
       - name: Setup build environment
         run: |
-          wget https://github.com/canonical/iot-field-kernel-snap/releases/download/temp/snapcraft_8.9.4.post82_amd64.snap
+          wget https://github.com/canonical/iot-field-kernel-snap/releases/download/temp/snapcraft_8.10.0.post45_amd64.snap
 
           sudo snap install --dangerous --classic snapcraft*.snap
 
@@ -106,7 +106,7 @@ jobs:
           ref: 22
       - name: Setup build environment
         run: |
-          wget https://github.com/canonical/iot-field-kernel-snap/releases/download/temp/snapcraft_8.9.4.post82_amd64.snap
+          wget https://github.com/canonical/iot-field-kernel-snap/releases/download/temp/snapcraft_8.10.0.post45_amd64.snap
 
           sudo snap install --dangerous --classic snapcraft*.snap
 
@@ -139,7 +139,7 @@ jobs:
           ref: 22
       - name: Setup build environment
         run: |
-          wget https://github.com/canonical/iot-field-kernel-snap/releases/download/temp/snapcraft_8.9.4.post82_amd64.snap
+          wget https://github.com/canonical/iot-field-kernel-snap/releases/download/temp/snapcraft_8.10.0.post45_amd64.snap
 
           sudo snap install --dangerous --classic snapcraft*.snap
 
@@ -175,7 +175,7 @@ jobs:
           ref: 24
       - name: Setup build environment
         run: |
-          wget https://github.com/canonical/iot-field-kernel-snap/releases/download/temp/snapcraft_8.9.4.post82_amd64.snap
+          wget https://github.com/canonical/iot-field-kernel-snap/releases/download/temp/snapcraft_8.10.0.post45_amd64.snap
 
           sudo snap install --dangerous --classic snapcraft*.snap
 
@@ -207,7 +207,7 @@ jobs:
           ref: 24
       - name: Setup build environment
         run: |
-          wget https://github.com/canonical/iot-field-kernel-snap/releases/download/temp/snapcraft_8.9.4.post82_amd64.snap
+          wget https://github.com/canonical/iot-field-kernel-snap/releases/download/temp/snapcraft_8.10.0.post45_amd64.snap
 
           sudo snap install --dangerous --classic snapcraft*.snap
 
