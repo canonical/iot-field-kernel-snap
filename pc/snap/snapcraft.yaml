@@ -1,16 +1,22 @@
 name: pc-kernel
-base: core22
-version: '0.1'
-summary: Reference AMD64 kernel snap
+adopt-info: kernel
+type: kernel
+build-base: core22
+summary: An Ubuntu Core kernel for x86_64 systems
 description: |
-  Base AMD64 kernel snap which currently just uses the standard pc-kernel snap
-  as a base.
+  This snap provides the kerrnel, modules, firmware, and initrd required to
+  create a generic Ubuntu Core image for x86_64 hardware.
+
+  The kernel and initrd are provided as a single EFI UKI file.
 
 grade: stable
 confinement: strict
 
+license: "GPL-2.0 AND GPL-3.0 AND CC-BY-SA-4.0"
+issues: https://github.com/canonical/iot-field-kernel-snap/issues
+website: https://github.com/canonical/iot-field-kernel-snap/tree/22/pc
+
 parts:
   pc-kernel:
     plugin: nil
-    stage-snaps:
-      - pc-kernel
+    stage-snaps: [pc-kernel/22/stable]

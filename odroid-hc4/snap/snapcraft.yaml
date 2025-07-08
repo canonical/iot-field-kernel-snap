@@ -1,36 +1,40 @@
 ---
 # SPDX-License-Identifier: GPL-2.0
 # Copyright (C) 2023 Isaac True
-
 name: odroid-hc4-kernel
-summary: A kernel for the ODROID HC4 platform for use with Ubuntu Core 22
-description: |
-  A kernel for the ODROID HC4 platform for use with Ubuntu Core 22
-
 adopt-info: kernel
-build-base: core22
-confinement: strict
 type: kernel
+build-base: core22
+summary: An Ubuntu Core kernel for the ARM64 ODROID HC4
+description: |
+  This snap provides the kernel, modules, firmware, and initrd required to
+  create an Ubuntu Core image for the ARM64 ODROID HC4.
+
+  The kernel and initrd are provided as a single FIT image file.
+
+  ** Note that the license information for this snap is incomplete **
+  Do your due diligence to ensure compliance with the licenses of the contents of this snap.
+
+  This snapcraft.yaml is licensed under CC-BY-SA-4.0
+
+grade: stable
+confinement: strict
+
+license: "GPL-2.0 AND GPL-3.0 AND CC-BY-SA-4.0"
+issues: https://github.com/canonical/iot-field-kernel-snap/issues
+website: https://github.com/canonical/iot-field-kernel-snap/tree/22/odroid-hc4
 
 architectures:
-  - build-on:
-      - arm64
-      - amd64
-    build-for: arm64
+  - build-on:  [arm64, amd64]
+    build-for: [arm64]
 
 package-repositories:
   - type: apt
     components: [main]
-    architectures: [arm64]
+    architectures: [$CRAFT_ARCH_BUILD_FOR]
     suites: [jammy, jammy-security, jammy-updates]
     key-id: F6ECB3762474EDA9D21B7022871920D1991BC93C
     url: http://ports.ubuntu.com/ubuntu-ports
-  - type: apt
-    suites: [jammy]
-    components: [main]
-    architectures: [amd64, arm64]
-    key-id: 78E1918602959B9C59103100F1831DDAFC42E99D
-    url: http://ppa.launchpad.net/snappy-dev/image/ubuntu
 
 parts:
   kernel:
@@ -39,95 +43,62 @@ parts:
       - linux-generic:${CRAFT_ARCH_BUILD_FOR}
     override-build: |
       craftctl default
+
       craftctl set version="$(apt info linux-generic:${CRAFT_ARCH_BUILD_FOR} | grep Version: | cut -f2 -d\ )"
-      craftctl set grade="stable"
-      KERNEL_VER="$(basename ${CRAFT_PART_INSTALL}/boot/vmlinuz-* | cut -f2- -d-)"
-      echo "${KERNEL_VER}" > "${CRAFT_PART_INSTALL}/.kernel_ver"
-      depmod -a -b "${CRAFT_PART_INSTALL}" "${KERNEL_VER}"
+
+      kver="$(basename ${CRAFT_PART_INSTALL}/boot/vmlinuz-* | cut -f2- -d-)"
+
+      depmod -ab "${CRAFT_PART_INSTALL}" "${kver}"
     organize:
+      lib/modules: modules/
       "boot/vmlinuz-*": kernel.img
-      "lib/modules": modules
-      "lib/firmware/*/device-tree/amlogic": dtbs
+      "lib/firmware/*/device-tree/amlogic/*": dtbs/
     stage:
+      - dtbs/meson-sm1-odroid-hc4.dtb
       - kernel.img
-      - dtbs
-      - modules
-      - .kernel_ver
+      - modules/
     prime:
+      - dtbs/meson-sm1-odroid-hc4.dtb
       - kernel.img
-      - dtbs
-      - modules
+      - modules/
 
   firmware:
     plugin: nil
-    stage-packages:
-      - linux-firmware
+    stage-packages: [linux-firmware]
     organize:
       "lib/firmware": firmware
     prime:
-      - firmware
+      - firmware/
       # Remove large unneeded firmware files
-      - -firmware/mellanox
-      - -firmware/mrvl
-      - -firmware/amdgpu
-      - -firmware/qcom
-      - -firmware/netronome
-      - -firmware/intel
-      - -firmware/i915
-      - -firmware/mediatek
-      - -firmware/qed
-      - -firmware/liquidio
-      - -firmware/dpaa2
-      - -firmware/radeon
-
-  # In order to support cross-compilation, we need to do a few tricks with
-  # downloading the initramfs package for the target arch
-  ubuntu-core-initramfs:
-    plugin: nil
-    override-pull: |
-      apt-get download ubuntu-core-initramfs:arm64
-    override-build: |
-      dpkg -x ubuntu-core-initramfs*_arm64.deb \
-        ${CRAFT_PART_INSTALL}
-
-      # Extra initrd modules
-      for mod in \
-          i2c-meson \
-          meson-gx-mmc \
-          pwm-meson \
-          i2c-meson \
-          nls_iso8859-1 \
-          fixed \
-          gpio-regulator \
-          pci-meson \
-        ; do
-        echo ${mod} >> \
-          ${CRAFT_PART_INSTALL}/usr/lib/ubuntu-core-initramfs/modules/main/extra-modules.conf
-      done
-    organize:
-      usr/lib/ubuntu-core-initramfs: ubuntu-core-initramfs
-    prime:
-      - -*
+      - -firmware/amdgpu/
+      - -firmware/asihpi/
+      - -firmware/ath10k/
+      - -firmware/ath11k/
+      - -firmware/ath12k/
+      - -firmware/bnx2x/
+      - -firmware/brcm/
+      - -firmware/cxgb4/
+      - -firmware/cypress/
+      - -firmware/dpaa2/
+      - -firmware/i915/
+      - -firmware/intel/
+      - -firmware/iwlwifi-*
+      - -firmware/libertas/
+      - -firmware/liquidio/
+      - -firmware/mediatek/
+      - -firmware/mellanox/
+      - -firmware/mrvl/
+      - -firmware/netronome/
+      - -firmware/nvidia/
+      - -firmware/qcom/
+      - -firmware/qed/
+      - -firmware/radeon/
 
   initrd:
-    plugin: nil
-    after:
-      - kernel
-      - ubuntu-core-initramfs
-      - firmware
-    build-packages:
-      # Use the native package to actually build the initrd
-      - ubuntu-core-initramfs
-    override-build: |
-      KERNEL_VERSION=$(cat ${CRAFT_STAGE}/.kernel_ver)
-      ubuntu-core-initramfs create-initrd \
-        --kernelver=${KERNEL_VERSION} \
-        --kerneldir=${CRAFT_STAGE}/modules/${KERNEL_VERSION} \
-        --skeleton=${CRAFT_STAGE}/ubuntu-core-initramfs \
-        --firmwaredir=${CRAFT_STAGE}/firmware \
-        --output=${CRAFT_PART_INSTALL}/initrd.img
-    organize:
-      # Remove version suffix
-      initrd.img*: initrd.img
+    plugin: initrd
+    after: [kernel, firmware]
+    initrd-build-efi-image: false
+    build-snaps: [core22/latest/stable]
     prime:
-      - -*
+      - -initrd.img-*
+      - -kernel.efi-*

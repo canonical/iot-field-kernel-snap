@@ -1,233 +1,125 @@
 ---
-# SPDX-License-Identifier: GPL-2.0
+# SPDX-License-Identifier: CC-BY-SA-4.0
 # Copyright (C) 2023 Isaac True
-
 name: orange-pi-5plus-kernel
-summary: A kernel for the Orange Pi 5+ for use with Ubuntu Core 22
+adopt-info: kernel
+type: kernel
+build-base: core22
+summary: An Ubuntu Core kernel for the ARM64 Orange Pi 5+
 description: |
+  This snap provides the kernel, modules, firmware, and initrd required to
+  create an Ubuntu Core image for the ARM64 Orange Pi 5+.
+
+  The kernel and initrd are provided as a single FIT image file.
+
+  ** Note that the license information for this snap is incomplete **
+  Do your due diligence to ensure compliance with the licenses of the contents of this snap.
+
+  The snapcraft.yaml and fit_arm64.its are licensed under CC-BY-SA-4.0
   A kernel for the Orange Pi 5+ for use with Ubuntu Core 22
 
-adopt-info: kernel
-build-base: core22
+grade: stable
 confinement: strict
-type: kernel
+
+license: "GPL-2.0 AND GPL-3.0 AND CC-BY-SA-4.0"
+issues: https://github.com/canonical/iot-field-kernel-snap/issues
+website: https://github.com/canonical/iot-field-kernel-snap/tree/22/orangepi-5plus
 
 architectures:
-  - build-on:
-      - arm64
-      - amd64
-    build-for: arm64
+  - build-on:  [arm64, amd64]
+    build-for: [arm64]
 
 package-repositories:
-  # Snapcraft does not allow adding foreign architecture PPAs, so add it
-  # manually
   - type: apt
-    architectures:
-      - "${CRAFT_ARCH_BUILD_FOR}"
-      - "${CRAFT_ARCH_BUILD_ON}"
-    components: [ main ]
-    formats: [ deb ]
-    key-server: keyserver.ubuntu.com
-    key-id: 78E1918602959B9C59103100F1831DDAFC42E99D
-    suites: [ jammy ]
-    url: http://ppa.launchpad.net/snappy-dev/image/ubuntu/
-  - type: apt
-    architectures: [ "${CRAFT_ARCH_BUILD_FOR}" ]
-    components: [ main ]
-    formats: [ deb ]
-    key-server: keyserver.ubuntu.com
+    components: [main]
+    architectures: [$CRAFT_ARCH_BUILD_FOR]
+    suites: [jammy, jammy-updates, jammy-security]
     key-id: F6ECB3762474EDA9D21B7022871920D1991BC93C
-    suites:
-      - jammy
-      - jammy-updates
-      - jammy-security
     url: http://ports.ubuntu.com/ubuntu-ports
 
 parts:
-  pre-build:
-    plugin: nil
-    override-pull: |
-      if [ "${CRAFT_ARCH_BUILD_ON}" != "${CRAFT_ARCH_BUILD_FOR}" ]; then
-        # Setup host for cross-building
-        mv /etc/apt/sources.list{,.old}
-        echo "deb [arch=${CRAFT_ARCH_BUILD_ON}] http://archive.ubuntu.com/ubuntu jammy main restricted universe multiverse" \
-          > /etc/apt/sources.list
-        echo "deb [arch=${CRAFT_ARCH_BUILD_ON}] http://archive.ubuntu.com/ubuntu jammy-updates main restricted universe multiverse" \
-          >> /etc/apt/sources.list
-        echo "deb [arch=${CRAFT_ARCH_BUILD_ON}] http://archive.ubuntu.com/ubuntu jammy-security main restricted universe multiverse" \
-          >> /etc/apt/sources.list
-        dpkg --add-architecture arm64
-        apt-get update
-      fi
-
   kernel:
-    after: [ pre-build ]
-    plugin: nil
+    plugin: kernel
     source: http://git.launchpad.net/~itrue/ubuntu/+source/linux/+git/jammy
     source-branch: orange-pi-6.1-rk35xx-ubuntu
     source-depth: 1
     source-type: git
+    kernel-kconfigflavour: "rk35xx"
     build-packages:
-      - bc
-      - bison
-      - ccache
-      - debhelper
-      - device-tree-compiler
-      - devscripts
-      - flex
-      - libssl-dev
-      - make
-      - python-is-python3
-      - python3
       - on arm64:
-        - gcc
-      - else:
-        - gcc-${CRAFT_ARCH_TRIPLET_BUILD_FOR}
-    build-environment:
-      - PATH: "/usr/lib/ccache/:${PATH}"
-      - LANG: "C"
-      - INSTALL_MOD_PATH: "${CRAFT_PART_INSTALL}"
-      - INSTALL_DTBS_PATH: "${CRAFT_PART_INSTALL}/dtbs"
-      - ARCH: "${CRAFT_ARCH_BUILD_FOR}"
-      - INSTALL_MOD_STRIP: "1"
-      - on arm64:
-        - CROSS_COMPILE: ""
-      - else:
-        - CROSS_COMPILE: "${CRAFT_ARCH_TRIPLET_BUILD_FOR}-"
+        - gcc-12
+        - g++-12
+      - on amd64:
+        - gcc-12-${CRAFT_ARCH_TRIPLET_BUILD_FOR}
+        - g++-12-${CRAFT_ARCH_TRIPLET_BUILD_FOR}
     override-build: |
-      craftctl set version="$(head -n1 debian.rk35xx/changelog | cut -f 2 -d \( | cut -f 1 -d \))"
-      craftctl set grade="stable"
+      # Complaints are made if gcc < 12
+      for f in cc ++; do
+        update-alternatives --install \
+          "/usr/bin/${CRAFT_ARCH_TRIPLET_BUILD_FOR}-g${f}" "g${f}" \
+          "/usr/bin/${CRAFT_ARCH_TRIPLET_BUILD_FOR}-g${f}-12" 10
+      done
 
-      ./debian/rules clean
-      ./debian/scripts/misc/annotations --export --arch "${ARCH}" > .config
+      craftctl default
 
-      make olddefconfig
-      make -j $(nproc)
-      make modules_install dtbs_install
-
-      ln -svr "${CRAFT_PART_INSTALL}"/lib/modules \
-        "${CRAFT_PART_INSTALL}"/modules
-      gzip -c arch/"${CRAFT_ARCH_BUILD_FOR}"/boot/Image > \
-        "${CRAFT_PART_INSTALL}"/Image.gz
+      craftctl set version="$(head -n1 "${CRAFT_PART_SRC}/debian.rk35xx/changelog" | cut -f2 -d\( | cut -f1 -d\))"
     stage:
-      - modules
-      - Image.gz
-      - dtbs
-      - lib/modules
+      - dtbs/
+      - kernel.img
+      - lib/
+      - modules/
     prime:
-      - modules
-      - lib/modules
+      - -dtbs/
+      - -kernel.img
 
   firmware:
-    after: [ pre-build ]
     plugin: nil
     source: https://github.com/orangepi-xunlong/firmware.git
     source-type: git
     source-depth: 1
     stage-packages:
-      - linux-firmware:${CRAFT_ARCH_BUILD_FOR}
-      - wireless-regdb:${CRAFT_ARCH_BUILD_FOR}
+      - linux-firmware:all
+      - wireless-regdb:all
     override-build: |
       # Overwrite any firmware files from OPi with the ones from linux-firmware
       # Need to do this here rather than in organize because it doesn't like
       # merging paths
       mkdir -p "${CRAFT_PART_INSTALL}/firmware"
-      cp -r "${CRAFT_PART_SRC}/"* "${CRAFT_PART_INSTALL}/firmware"
-      cp -r "${CRAFT_PART_INSTALL}/lib/firmware/"* \
+
+      cp -rf "${CRAFT_PART_SRC}/"* "${CRAFT_PART_INSTALL}/firmware"
+      cp -rf "${CRAFT_PART_INSTALL}/lib/firmware/"* \
         "${CRAFT_PART_INSTALL}/firmware/"
+
       rm -rf "${CRAFT_PART_INSTALL}/firmware/lib"
     stage:
-      - firmware
+      - firmware/
     prime:
-      - firmware
       # Remove massive and unneeded firmware files
-      - -firmware/mellanox
-      - -firmware/amdgpu
-      - -firmware/intel
-      - -firmware/ath11k
-      - -firmware/liquidio
-      - -firmware/i915
-
-  # Download this separately to support cross-building
-  ubuntu-core-initramfs:
-    after: [ pre-build ]
-    plugin: nil
-    override-build: |
-      apt-get download ubuntu-core-initramfs:${CRAFT_ARCH_BUILD_FOR}
-      dpkg -x ubuntu-core-initramfs*.deb "${CRAFT_PART_INSTALL}/"
-    stage:
-      - usr/lib/ubuntu-core-initramfs
-    prime:
-      - -*
+      - -firmware/amdgpu/
+      - -firmware/ath11k/
+      - -firmware/i915/
+      - -firmware/intel/
+      - -firmware/liquidio/
+      - -firmware/mellanox/
 
   initrd:
-    plugin: nil
-    after:
-      - kernel
-      - ubuntu-core-initramfs
-      - firmware
-    build-packages:
-      # Use the host package to actually build the initrd
-      - ubuntu-core-initramfs
-    override-build: |
-      KERNEL_VERSION=$(basename "${CRAFT_STAGE}"/modules/*)
-      ubuntu-core-initramfs create-initrd \
-        --skeleton="${CRAFT_STAGE}"/usr/lib/ubuntu-core-initramfs \
-        --kernelver="${KERNEL_VERSION}" \
-        --kerneldir="${CRAFT_STAGE}"/modules/"${KERNEL_VERSION}" \
-        --firmwaredir="${CRAFT_STAGE}"/firmware \
-        --output="${CRAFT_PART_INSTALL}"/initrd.img
-    stage:
-      - initrd.img-*
-    prime:
-      - -*
-
-  initrd-fixup:
-    plugin: nil
-    after:
-      - initrd
-    override-build: |
-      # Replace the snap-bootstrap binary with one for the correct architecture
-      if [ "${CRAFT_ARCH_BUILD_ON}" != "${CRAFT_ARCH_BUILD_FOR}" ]; then
-        apt-get download snapd:${CRAFT_ARCH_BUILD_FOR}
-        dpkg -x snapd*.deb "${CRAFT_PART_BUILD}"
-        mkdir -p "${CRAFT_PART_BUILD}"/initrd
-        pushd "${CRAFT_PART_BUILD}"/initrd
-        zstd -dc < "${CRAFT_STAGE}"/initrd.img-* | cpio -id
-        install -Dm0755 "${CRAFT_PART_BUILD}"/usr/lib/snapd/snap-bootstrap \
-          usr/lib/snapd/snap-bootstrap
-        find . | cpio --create --quiet --format='newc' --owner=0:0 | \
-          zstd -1 -T0 > "${CRAFT_PART_INSTALL}"/initrd.img
-        popd
-      else
-        cp "${CRAFT_STAGE}"/initrd.img-* "${CRAFT_PART_INSTALL}"/initrd.img
-      fi
-    stage:
-      - initrd.img
+    plugin: initrd
+    after: [kernel, firmware]
+    initrd-build-efi-image: false
+    build-snaps: [core22/latest/stable]
     prime:
       - -*
 
   fit-image:
-    after:
-      - kernel
-      - initrd-fixup
-    plugin: nil
+    after: [kernel, initrd]
+    plugin: dump
     source: fit-image/
-    build-packages:
-      - u-boot-tools
-      - device-tree-compiler
-    override-build: |
-      mkimage \
-        -f ${CRAFT_PART_SRC}/kernel_${CRAFT_ARCH_BUILD_FOR}.its \
-        ${CRAFT_PART_INSTALL}/kernel.img
+    build-packages: [u-boot-tools, device-tree-compiler]
+    override-stage: |
+      craftctl default
 
-  post-build:
-    after: [ fit-image ]
-    plugin: nil
-    override-build: |
-      if [ "${CRAFT_ARCH_BUILD_ON}" != "${CRAFT_ARCH_BUILD_FOR}" ]; then
-        if [ -e /etc/apt/sources.list.old ]; then
-          mv /etc/apt/sources.list{.old,}
-        fi
-        apt-get update
-      fi
+      mkimage \
+        -f "${CRAFT_STAGE}/kernel_${CRAFT_ARCH_BUILD_FOR}.its" \
+        "${CRAFT_PRIME}/kernel.img"
+    prime:
+      - -*
