@@ -8,42 +8,37 @@ description: |
   create an Ubuntu Core image for the RISC-V AllWinner Nezha.
 
   The kernel and initrd are provided as a singular FIT image file.
-  This FIT image includes several other device trees to accomodate the Sipeed Lichee RV and its various additional peripherals.
+  This FIT image includes several other device trees to accomodate the Sipeed
+  Lichee RV and its various additional peripherals.
 
   ** Note that the license information for this snap is incomplete **
-  Do your due diligence to ensure compliance with the licenses of the contents of this snap.
+  Do your due diligence to ensure compliance with the licenses of the contents
+  of this snap.
 
-  This snapcraft.yaml and the kernel_riscv64.its file are licensed under CC-BY-SA-4.0
+  This snapcraft.yaml and the kernel_riscv64.its file are licensed under
+  CC-BY-SA-4.0
 
-  You can find any and all licenses for the contents of this snap at the following locations:
+  You can find any and all licenses for the contents of this snap at the
+  following locations:
 
-  kernel:             https://git.launchpad.net/~canonical-kernel/ubuntu/+source/linux-riscv/+git/noble/tree/?h=allwinner-next
-  linux-firmware:     https://git.launchpad.net/ubuntu/+source/linux-firmware/tree/?h=applied/ubuntu/noble
+  kernel:             https://git.launchpad.net/~canonical-kernel/ubuntu/+source/linux-riscv/+git/jammy/tree/?h=allwinner-5.19-next
+  linux-firmware:     https://git.launchpad.net/ubuntu/+source/linux-firmware/tree/?h=applied/ubuntu/jammy
   rtl8723ds:          https://git.launchpad.net/ubuntu/+source/licheerv-rtl8723ds-dkms/tree/
   rtl8723ds upstream: https://github.com/lwfinger/rtl8723ds
 
-  Additional licenses can also be found within this snap in the licenses/ top-level directory.
+  Additional licenses can also be found within this snap in the licenses/
+  top-level directory.
 
 grade: stable
 confinement: strict
 
 license: "GPL-2.0 AND GPL-3.0 AND CC-BY-SA-4.0"
 issues: https://github.com/canonical/iot-field-kernel-snap/issues
-website: https://github.com/canonical/iot-field-kernel-snap/tree/22-riscv64-nezha
+website: https://github.com/canonical/iot-field-kernel-snap/tree/22/nezha
 
 architectures:
   - build-on:  [amd64]
     build-for: [riscv64]
-
-# In an ideal universe, this would be all we would have to do. Unfortunately,
-# the workaround in the README is required for core22 builds.
-package-repositories:
-  - type: apt
-    components: [main, universe]
-    architectures: [riscv64]
-    suites: [jammy, jammy-updates]
-    key-id: F6ECB3762474EDA9D21B7022871920D1991BC93C
-    url: http://ports.ubuntu.com/ubuntu-ports
 
 parts:
   # Trimming any firmware we know a priori to not be needed by the target device
@@ -82,8 +77,8 @@ parts:
     build-packages:
       - gcc-${CRAFT_ARCH_TRIPLET_BUILD_FOR}
     stage-packages:
-      - linux-firmware:${CRAFT_ARCH_BUILD_FOR}
-      - wireless-regdb
+      - linux-firmware:all
+      - wireless-regdb:all
     override-build: |
       craftctl default
 
@@ -157,11 +152,24 @@ parts:
   initrd:
     plugin: initrd
     after: [kernel, trim-firmware]
-    initrd-build-efi-image: true
+    initrd-build-efi-image: false
     initrd-configured-modules: [nls_iso8859-1, sunxi-mmc]
     build-snaps: [core22/latest/stable]
     prime:
-      - -kernel.efi-*
+      - -*
+
+  fit-image:
+    after: [kernel, initrd]
+    plugin: dump
+    source: fit-image/
+    build-packages: [device-tree-compiler, u-boot-tools]
+    override-stage: |
+      craftctl default
+
+      mkimage -f "${CRAFT_STAGE}/fitImage_${CRAFT_ARCH_BUILD_FOR}.its" \
+        "${CRAFT_PRIME}/kernel.img"
+    prime:
+      - -*
 
 components:
   wlan:

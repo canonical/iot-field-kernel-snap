@@ -11,7 +11,7 @@
 	images {
 		kernel {
 			description = "Ubuntu Kernel";
-			data = /incbin/("../../../stage/Image");
+			data = /incbin/("Image");
 			type = "kernel";
 			arch = "riscv";
 			os = "linux";
@@ -24,7 +24,7 @@
 		};
 		ramdisk {
 			description = "Ubuntu Core ramdisk";
-			data = /incbin/("../../../stage/initrd.img");
+			data = /incbin/("initrd.img");
 			type = "ramdisk";
 			arch = "riscv";
 			os = "linux";
@@ -36,7 +36,7 @@
 		};
 		fdt-mpfs-icicle-kit.dtb {
 			description = "Polarfire SoC Icicle DTB";
-			data = /incbin/("../../../stage/dtbs/microchip/mpfs-icicle-kit.dtb");
+			data = /incbin/("dtbs/device-tree/microchip/mpfs-icicle-kit.dtb");
 			type = "flat_dt";
 			arch = "riscv";
 			compression = "none";

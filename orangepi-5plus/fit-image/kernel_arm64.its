@@ -11,7 +11,7 @@
 	images {
 		kernel-ubuntu {
 			description = "ubuntu-kernel";
-			data = /incbin/("../../../stage/Image.gz");
+			data = /incbin/("kernel.img");
 			type = "kernel";
 			arch = "arm64";
 			os = "linux";
@@ -26,7 +26,7 @@
 
 		ramdisk-uc {
 			description = "Ubuntu-Core-ramdisk";
-			data = /incbin/("../../../stage/initrd.img");
+			data = /incbin/("initrd.img");
 			type = "ramdisk";
 			arch = "arm64";
 			os = "linux";
@@ -40,7 +40,7 @@
 
 		fdt-rk3588-orangepi-5-plus {
 			description = "Orange Pi 5+";
-			data = /incbin/("../../../stage/dtbs/rockchip/rk3588-orangepi-5-plus.dtb");
+			data = /incbin/("dtbs/rockchip/rk3588-orangepi-5-plus.dtb");
 			type = "flat_dt";
 			arch = "arm64";
 			compression = "none";
