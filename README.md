@@ -35,7 +35,7 @@ subdirectory.
     # proceed
   ```
 
-## Branches
+## Subdirectories
 
 Please ensure that your subdirectory includes a README describing:
  - the board,
@@ -48,7 +48,7 @@ The expectation is that any new subdirectory should have an accompanying new
 workflow added. That workflow should follow the general style of the other
 workflows, and ideally there are two:
 
-1) One workflow testing builds using some version-specific snapcraft (i.e. `7.x/edge`)
+1) One workflow testing builds using some version-specific snapcraft (e.g. `7.x/edge`)
 2) One workflow testing builds using snapcraft from `latest/edge`
 
 This ensures continuous testing of our work to spot any potential regressions or breaking changes.
