@@ -19,19 +19,39 @@ on:
 
 # Convention:
 # jobs:
-#   build_<branch name>_<snapcraft track>:
-#     name: <snapcraft track> job for <branch> snap
-#     runs-on: ubuntu-<base>
+#   <platform>_<core release>:
+#     name: <snapcraft release> job for <core release>/<platform>
+#     runs-on: ubuntu-<core release>.04
 #     steps:
-#       - name: Checkout <branch>
-#         uses: actions/checkout@v4
+#       - uses: actions/checkout@v4
 #         with:
-#           ref: <branch>
-#       - name: Test build of <branch> snap with snapcraft <channel>
-#         uses: snapcore/action-build@v1
+#           ref: <core release>
+#       - name: Setup build environment
+#         run: |
+#           # Temporary, until kernel+initrd plugins are merged
+#           wget https://github.com/canonical/iot-field-kernel-snap/releases/download/temp/snapcraft_8.10.0.post45_amd64.snap
+#           sudo snap install --dangerous --classic snapcraft*.snap
+#           rm -f snapcraft*.snap
+#           # For building the initrd
+#           sudo apt install qemu-user-static
+#         # Temporary, until kernel+initrd plugins are merged
+#       - name: Build <core release>/<platform>
+#         id: build
+#         env:
+#           SNAPCRAFT_UA_TOKEN: ${{ secrets.UA_TOKEN }}
+#           SNAPCRAFT_BUILD_INFO: 1
+#           SNAPCRAFT_VERBOSITY_LEVEL: verbose
+#         run: |
+#           cd <platform>
+#           sed -i "s/name: /name: ${{ secrets.STORE_PREFIX }}-/" snap/snapcraft.yaml
+#           sudo snapcraft --enable-experimental-plugins --destructive-mode
+#       - name: Upload <core release>/<platform>
+#         uses: snapcore/action-publish@v1
+#         env:
+#           SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.STORE_LOGIN }}
 #         with:
-#           snapcraft-channel: <track>/<risk>/<branch>
-#           snapcraft-args: --verbosity=verbose
+#           snap: ${{ steps.build.outputs.snap }}
+#           release: <track>/edge
 
 ##########
 ### 22 ###
@@ -49,6 +69,7 @@ jobs:
           wget https://github.com/canonical/iot-field-kernel-snap/releases/download/temp/snapcraft_8.10.0.post45_amd64.snap
 
           sudo snap install --dangerous --classic snapcraft*.snap
+          sudo apt install qemu-user-static
 
           rm -f snapcraft*.snap
       - name: Build 22/nezha
@@ -61,7 +82,7 @@ jobs:
         run: |
           cd nezha
           sed -i "s/name: /name: ${{ secrets.STORE_PREFIX }}-/" snap/snapcraft.yaml
-          sudo snapcraft --enable-experimental-plugins
+          sudo snapcraft --enable-experimental-plugins --destructive-mode
       - name: Upload 22/nezha
         uses: snapcore/action-publish@v1
         env:
@@ -82,6 +103,7 @@ jobs:
           wget https://github.com/canonical/iot-field-kernel-snap/releases/download/temp/snapcraft_8.10.0.post45_amd64.snap
 
           sudo snap install --dangerous --classic snapcraft*.snap
+          sudo apt install qemu-user-static
 
           rm -f snapcraft*.snap
       - name: Build 22/odroid-hc4
@@ -94,7 +116,7 @@ jobs:
         run: |
           cd odroid-hc4
           sed -i "s/name: /name: ${{ secrets.STORE_PREFIX }}-/" snap/snapcraft.yaml
-          sudo snapcraft --enable-experimental-plugins
+          sudo snapcraft --enable-experimental-plugins --destructive-mode
       ## Not being maintained...
       - name: Upload 22/odroid-hc4
         uses: snapcore/action-publish@v1
@@ -116,6 +138,7 @@ jobs:
           wget https://github.com/canonical/iot-field-kernel-snap/releases/download/temp/snapcraft_8.10.0.post45_amd64.snap
 
           sudo snap install --dangerous --classic snapcraft*.snap
+          sudo apt install qemu-user-static
 
           rm -f snapcraft*.snap
       - name: Build 22/orangepi-5plus
@@ -128,7 +151,7 @@ jobs:
         run: |
           cd orangepi-5plus
           sed -i "s/name: /name: ${{ secrets.STORE_PREFIX }}-/" snap/snapcraft.yaml
-          sudo snapcraft --enable-experimental-plugins
+          sudo snapcraft --enable-experimental-plugins --destructive-mode
       ## Not being maintained...
       - name: Upload latest/edge
         uses: snapcore/action-publish@v1
@@ -138,8 +161,8 @@ jobs:
           snap: ${{ steps.build.outputs.snap }}
           release: latest/edge
 
-  polarfire_22:
-    name: latest/edge job for 22/polarfire
+  polarfire-icicle_22:
+    name: latest/edge job for 22/polarfire-icicle
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
@@ -150,9 +173,10 @@ jobs:
           wget https://github.com/canonical/iot-field-kernel-snap/releases/download/temp/snapcraft_8.10.0.post45_amd64.snap
 
           sudo snap install --dangerous --classic snapcraft*.snap
+          sudo apt install qemu-user-static
 
           rm -f snapcraft*.snap
-      - name: Build 22/polarfire
+      - name: Build 22/polarfire-icicle
         id: build
         env:
           SNAPCRAFT_UA_TOKEN: ${{ secrets.UA_TOKEN }}
@@ -162,9 +186,9 @@ jobs:
         run: |
           cd polarfire-icicle
           sed -i "s/name: /name: ${{ secrets.STORE_PREFIX }}-/" snap/snapcraft.yaml
-          sudo snapcraft --enable-experimental-plugins
+          sudo snapcraft --enable-experimental-plugins --destructive-mode
       ## Not being maintained...
-      - name: Upload 22/polarfire
+      - name: Upload 22/polarfire-icicle
         uses: snapcore/action-publish@v1
         env:
           SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.STORE_LOGIN }}
@@ -187,6 +211,7 @@ jobs:
           wget https://github.com/canonical/iot-field-kernel-snap/releases/download/temp/snapcraft_8.10.0.post45_amd64.snap
 
           sudo snap install --dangerous --classic snapcraft*.snap
+          sudo apt install qemu-user-static
 
           rm -f snapcraft*.snap
       - name: Build 24/nezha
@@ -199,7 +224,7 @@ jobs:
         run: |
           cd nezha
           sed -i "s/name: /name: ${{ secrets.STORE_PREFIX }}-/" snap/snapcraft.yaml
-          sudo snapcraft
+          sudo snapcraft --destructive-mode
       - name: Upload 24/nezha
         uses: snapcore/action-publish@v1
         env:
@@ -220,6 +245,7 @@ jobs:
           wget https://github.com/canonical/iot-field-kernel-snap/releases/download/temp/snapcraft_8.10.0.post45_amd64.snap
 
           sudo snap install --dangerous --classic snapcraft*.snap
+          sudo apt install qemu-user-static
 
           rm -f snapcraft*.snap
       - name: Build 24/visionfive2
@@ -232,7 +258,7 @@ jobs:
         run: |
           cd visionfive2
           sed -i "s/name: /name: ${{ secrets.STORE_PREFIX }}-/" snap/snapcraft.yaml
-          sudo snapcraft
+          sudo snapcraft --destructive-mode
       - name: Upload 24/visionfive2
         uses: snapcore/action-publish@v1
         env:
