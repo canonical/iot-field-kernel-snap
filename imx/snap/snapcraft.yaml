@@ -1,0 +1,318 @@
+name: imx-kernel
+type: kernel
+build-base: core24
+adopt-info: kernel
+summary: The i.MX family Linux kernel
+description: |
+  This snap provides the kernel, modules, firmware, and initrd required to
+  create an kernel snap the NXP i.MX family.
+
+  The kernel and initrd are provided as a single universal kernel image file
+  which is then booted by the managed assets created and owned by snapd.
+  Generally, this snap would also provide the device tree files for the target
+  hardware. However, in this case, that device tree is provided by the u-boot
+  binary in our gadget snap. If we needed it here, we could likewise add that
+  file to our UKI.
+
+  ** Note that the license information for this snap is incomplete **
+  Do your due diligence to ensure compliance with the licenses of the contents of this snap.
+
+  This snapcraft.yaml is licensed under CC-BY-SA-4.0
+
+  You can find any and all licenses for the contents of this snap at the following locations:
+
+  kernel:             https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/noble
+  linux-firmware:     https://git.launchpad.net/ubuntu/+source/linux-firmware/tree/?h=applied/ubuntu/noble
+
+grade: stable
+confinement: strict
+
+license: "GPL-2.0 AND GPL-3.0 AND CC-BY-SA-4.0"
+
+platforms:
+  arm64:
+    build-on: [amd64, arm64]
+    build-for: [arm64]
+
+package-repositories:
+  - type: apt
+    architectures: [$CRAFT_ARCH_BUILD_FOR]
+    formats: [deb, deb-src]
+    components: [main]
+    suites: [noble, noble-updates, noble-backports]
+    key-id: F6ECB3762474EDA9D21B7022871920D1991BC93C
+    url: http://ports.ubuntu.com/ubuntu-ports
+
+hooks:
+  fde-setup:
+    plugs: [home, tee]
+    environment:
+      LD_LIBRARY_PATH: ${SNAP}/usr/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}
+
+parts:
+  # Provide the kernel.
+  # Trimming any modules we know a priori to not be needed by the target device
+  # can marginally reduce kernel snap size.
+  kernel:
+    plugin: kernel
+    source: https://git.launchpad.net/~ondrak/ondras-snaps/+git/linux-kernel
+    source-depth: 1
+    source-type: git
+    source-branch: Ubuntu-imx-6.8.0-1006.9-snap
+    build-packages:
+      - on amd64:
+          - crossbuild-essential-${CRAFT_ARCH_BUILD_FOR}
+    kernel-kconfigflavour: imx
+    override-build: |
+      craftctl default
+
+      craftctl set version=$(git describe --tags |\
+                             cut -c 12-42        |\
+                             sed 's/-snap$//')
+
+      cp -f "${CRAFT_PART_SRC}/imx-keep.modules"        \
+            "${CRAFT_PART_SRC}/prune-kernel-modules.sh" \
+            "${CRAFT_PART_INSTALL}/"
+
+      "${CRAFT_PART_SRC}/prune-kernel-modules.sh" "${CRAFT_PART_INSTALL}" "${CRAFT_PART_SRC}/imx-keep.modules"
+    # override-stage: |
+    # craftctl default
+
+    # keep only listed modules
+    # "${CRAFT_STAGE}/prune-kernel-modules.sh" "${CRAFT_STAGE}" "${CRAFT_STAGE}/imx-keep.modules"
+    prime:
+      - lib/
+      - modules/
+
+  firmware:
+    after: [kernel]
+    plugin: dump
+    source: https://git.launchpad.net/canonical-kernel-snaps
+    source-depth: 1
+    source-type: git
+    stage-packages: [linux-firmware, wireless-regdb]
+    organize:
+      lib/firmware: firmware/
+    override-prime: |
+      craftctl default
+
+      "${CRAFT_STAGE}/trim-firmware" "${CRAFT_PRIME}"
+    stage:
+      - firmware/
+      - trim-firmware
+    prime:
+      - firmware/
+
+  imx-firmware:
+    plugin: nil
+    build-packages: [wget]
+    override-pull: |
+      # latest firmware version can be found in
+      # https://github.com/nxp-imx/meta-imx/ -b <relevant release> in SCR-<release version>.txt
+      firmware_version="8.29-8741a3b"
+      wget https://www.nxp.com/lgfiles/NMG/MAD/YOCTO/firmware-imx-${firmware_version}.bin \
+        -O "${CRAFT_PART_SRC}/firmware-imx.bin"
+
+      chmod +x "${CRAFT_PART_SRC}/firmware-imx.bin"
+    override-build: |
+      "${CRAFT_PART_BUILD}/firmware-imx.bin" --force --auto-accept
+
+      mkdir -p "${CRAFT_PART_INSTALL}/firmware/imx"
+
+      cp -r "${CRAFT_PART_BUILD}/firmware-imx-"*/firmware/* "${CRAFT_PART_INSTALL}/firmware/imx"
+    stage:
+      - -firmware/imx/ddr
+
+  optee-client:
+    plugin: nil
+    source: https://github.com/OP-TEE/optee_client.git
+    source-depth: 1
+    source-type: git
+    source-tag: 4.2.0
+    build-packages:
+      - pkgconf:${CRAFT_ARCH_BUILD_FOR}
+      - uuid-dev:${CRAFT_ARCH_BUILD_FOR}
+    build-environment:
+      - CROSS_COMPILE: "${CRAFT_ARCH_TRIPLET_BUILD_FOR}-"
+      - DEBUG: "0"
+      - CFG_TEE_CLIENT_LOAD_PATH: ""
+      - CFG_TA_TEST_PATH: "0"
+      - SBINDIR: "/usr/sbin"
+      - LIBDIR: "/usr/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}"
+      - DESTDIR: "${CRAFT_PART_INSTALL}"
+      - to arm64:
+          - ARCH: "${CRAFT_ARCH_BUILD_FOR}"
+    override-build: |
+      make O="${CRAFT_PART_BUILD}/out" -j${CRAFT_PARALLEL_BUILD_COUNT}
+      make install O="${CRAFT_PART_BUILD}/out"
+
+      mkdir -p "${CRAFT_PART_INSTALL}/addons/usr/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}"
+
+      cp -f "${CRAFT_PART_INSTALL}/usr/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}/libteec"* \
+            "${CRAFT_PART_INSTALL}/addons/usr/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}"
+    prime:
+      - usr/lib/*/lib*so*
+
+  optee-uc-fde:
+    plugin: dump
+    source: https://git.launchpad.net/~ondrak/+git/optee-uc-fde
+    source-depth: 1
+    source-type: git
+    source-branch: with-helper
+    organize:
+      "*": optee-uc-fde/
+    prime:
+      - -*
+
+  optee-uc-fde-client:
+    after: [optee-client, optee-uc-fde]
+    plugin: nil
+    build-packages:
+      - libcryptsetup-dev:${CRAFT_ARCH_BUILD_FOR}
+      - libjson-c-dev:${CRAFT_ARCH_BUILD_FOR}
+    build-environment:
+      - CROSS_COMPILE: "${CRAFT_ARCH_TRIPLET_BUILD_FOR}-"
+      - to arm64:
+          - ARCH: "${CRAFT_ARCH_BUILD_FOR}"
+      # we are not using TA build here (early TA is used), so
+      # it does not matter what key is used to sign built TA
+      # support cross build
+      - TA_DEV_KIT_DIR: "${CRAFT_STAGE}/export-ta_arm"
+      - OPTEE_CLIENT_EXPORT: "${CRAFT_STAGE}/usr"
+      - DESTDIR: "${CRAFT_PART_INSTALL}"
+    override-build: |
+      make -C "${CRAFT_STAGE}/optee-uc-fde" \
+            O="${CRAFT_PART_BUILD}/out"     \
+            fde-key-manager fde-reveal-key fde-setup fde-helper
+
+      make -C "${CRAFT_STAGE}/optee-uc-fde" \
+            O="${CRAFT_PART_BUILD}/out"     \
+            fde-key-manager fde-reveal-key fde-setup fde-helper \
+            install
+
+      install -Dm 755 "${CRAFT_PART_INSTALL}/usr/bin/fde-reveal-key" \
+            "${CRAFT_PART_INSTALL}/addons/usr/bin/fde-reveal-key"
+
+      install -Dm 755 "${CRAFT_PART_INSTALL}/usr/bin/fde-setup" \
+        "${CRAFT_PART_INSTALL}/snap/hooks/fde-setup"
+
+      ln -sf fde-reveal-key "${CRAFT_PART_INSTALL}/addons/usr/bin/fde-setup"
+    stage:
+      - addons/
+      - snap/
+    prime:
+      - snap/
+
+  # optee signing keys: used for signing ot Trusted Applications
+  optee-keys:
+    plugin: dump
+    source: https://git.launchpad.net/~ondrak/+git/dev-keys
+    source-type: git
+    source-branch: ta-keys
+    organize:
+      "*": ta-keys/
+    prime:
+      - -*
+
+  test-keys:
+    plugin: dump
+    source: https://git.launchpad.net/~ondrak/+git/dev-keys
+    source-type: git
+    source-branch: master
+    organize:
+      "*": signing-key/
+    prime:
+      - -*
+
+  optee-os:
+    after: [optee-keys, optee-uc-fde]
+    plugin: nil
+    source: https://github.com/nxp-imx/imx-optee-os.git
+    source-type: git
+    source-tag: lf-6.12.34-2.1.0
+    source-depth: 1
+    build-packages:
+      [device-tree-compiler, python3-cryptography, python3-pyelftools]
+    build-environment:
+      - ARCH: "arm"
+      - CROSS_COMPILE: "${CRAFT_ARCH_TRIPLET_BUILD_FOR}-"
+      - CROSS_COMPILE_core: "${CRAFT_ARCH_TRIPLET_BUILD_FOR}-"
+      - DEBUG: "0"
+      - CFG_TEE_CORE_DEBUG: "n"
+      - CFG_TEE_BENCHMARK: "n"
+      - TA_PUBLIC_KEY: "${CRAFT_STAGE}/ta-keys/ta_public.pem"
+      # depending on architecture
+      # on arm64: we are building optee-os only to get build export dependency to build REE app
+      # on armhf: we are building optee-os to be included in FIT image
+      - to arm64:
+          - CROSS_COMPILE_ta_arm64: "${CRAFT_ARCH_TRIPLET_BUILD_FOR}-"
+          - CFG_ARM64_core: "y"
+          - PLATFORM: "vexpress-qemu_armv8a"
+          - CFG_USER_TA_TARGETS: "ta_arm64"
+    override-build: |
+      # add optee-uc-fde TA
+      cp -r "${CRAFT_STAGE}/optee-uc-fde/ta/fde_key_handler" "${CRAFT_PART_BUILD}/ta/"
+
+      export OPTEE_VERSION="$(head -1 CHANGELOG.md  | sed 's/# OP-TEE - version \(.*\) (.*/\1/g')-imx"
+
+      make O="${CRAFT_PART_BUILD}/out" -j${CRAFT_PARALLEL_BUILD_COUNT}
+
+      cp -r "${CRAFT_PART_BUILD}/out/export-ta_arm"* "${CRAFT_PART_INSTALL}/export-ta_arm"
+    prime:
+      - -*
+
+  # Provide the initrd for Ubuntu Core.
+  # The initrd includes important things such as snap-bootstrap which
+  # orchestrates the entire Ubuntu Core installation process. The documentation
+  # for this tool can be found here:
+  # https://github.com/snapcore/snapd/blob/master/cmd/snap-bootstrap/README.md
+  initrd:
+    after: [firmware, kernel, imx-firmware, optee-uc-fde-client]
+    plugin: initrd
+    initrd-addons:
+      - usr/bin/fde-reveal-key
+      - usr/bin/fde-setup
+      - usr/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}/libteec.so*
+    initrd-firmware:
+      - firmware/imx/sdma/sdma-imx7d.bin
+      - firmware/regulatory.db
+      - firmware/regulatory.db.p7s
+    prime:
+      - -initrd.img*
+
+  firmware-nxp:
+    after: [initrd]
+    plugin: dump
+    source: https://github.com/NXP/imx-firmware.git
+    source-depth: 1
+    source-type: git
+    source-tag: lf-6.12.34-2.1.0
+    organize:
+      "cyw-wifi-bt/1CX_CYW4356/*": firmware/brcm/
+      "cyw-wifi-bt/1FD_CYW4359/*": firmware/brcm/
+      "cyw-wifi-bt/1MW_CYW43455/*": firmware/brcm/
+      "brcm/": firmware/brcm/
+      "nxp/FwImage_8997/*": firmware/nxp/
+      "nxp/FwImage_8987/*": firmware/nxp/
+      "nxp/FwImage_IW612_SD/*": firmware/nxp/
+      "nxp/wifi_mod_para.conf": firmware/nxp/
+    stage:
+      - firmware/brcm
+      - firmware/nxp
+
+  fit-image:
+    after: [kernel, initrd, optee-os, test-keys]
+    plugin: dump
+    source: fit-image/
+    build-packages: [device-tree-compiler, u-boot-tools]
+    override-stage: |
+      craftctl default
+
+      # include key dir in case there are keys available
+      mkimage \
+        -f "${CRAFT_STAGE}/kernel_${CRAFT_ARCH_BUILD_FOR}.its" \
+        -r "${CRAFT_STAGE}/kernel.img"  \
+        -k "${CRAFT_STAGE}/signing-key" \
+           "${CRAFT_PRIME}/kernel.img"
+    prime:
+      - kernel.img
