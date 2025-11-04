@@ -1,0 +1,199 @@
+name: pc-kernel
+adopt-info: kernel
+build-base: core24
+type: kernel
+summary: Ubuntu generic kernel
+description: |
+  The Ubuntu generic kernel package as a snap.
+
+  This kernel snap targets generic AMD64 devices with the standard Ubuntu
+  kernel. The ideal target is a Core Desktop system.
+
+  This kernel snap is in flux and not finalized. Use at your own risk :)
+
+grade: stable
+confinement: strict
+
+source-code: https://git.launchpad.net/~canonical-kernel-snaps/canonical-kernel-snaps/+git/kernel-snaps-u24.04
+contact: dilyn.corner@canonical.com
+
+platforms:
+  amd64:
+
+# the wl module conflicts with a few other modules which may be shipped in our kernel snap
+plugs:
+  load-wl:
+    interface: kernel-module-load
+    modules:
+      - name: wl
+        load: on-boot
+      - name: b44
+        load: denied
+      - name: b43
+        load: denied
+      - name: b43-legacy
+        load: denied
+      - name: ssb
+        load: denied
+      - name: brcmsmac
+        load: denied
+      - name: bcma
+        load: denied
+        # Technically this isn't WiFi related but we piggy-back off of the load-wl
+        # interface getting autoconnect status to avoid filing a second support
+        # ticket for facetimehd to get its own interface :v
+      - name: facetimehd
+        load: on-boot
+
+parts:
+  # Build the noble kernel
+  kernel:
+    plugin: kernel
+    source: https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/noble
+    source-depth: 1
+    source-type: git
+    source-branch: hwe-6.14-next
+    kernel-kconfigs:
+      # These aren't necessary
+      - CONFIG_IKHEADERS=n
+      # Required for Macbook Pro touchpad
+      - CONFIG_MOUSE_BCM5974=y
+      - CONFIG_MODULE_SIG=""
+      - CONFIG_MODULE_SIG_KEY=""
+      - CONFIG_SYSTEM_TRUSTED_KEYS=""
+      - CONFIG_SYSTEM_REVOCATION_KEYS=""
+    override-build: |
+      craftctl default
+
+      kver="$(basename "${CRAFT_PART_INSTALL}/lib/modules/"*)"
+      craftctl set version="$kver"
+    prime:
+      - lib/firmware/
+      - lib/modules/
+      - modules/
+
+  # Trimming any firmware we know a priori to not be needed by the target device
+  # can reduce kernel snap size.
+  # Canonical's Kernel team maintains some scripts which can be useful for
+  # automatically removing unneeded firmware blobs.
+  firmware:
+    after: [kernel]
+    plugin: dump
+    source: https://git.launchpad.net/canonical-kernel-snaps
+    source-depth: 1
+    source-type: git
+    stage-packages:
+      - linux-firmware:${CRAFT_ARCH_BUILD_FOR}
+      - wireless-regdb
+    organize:
+      # On Ubuntu Core, the firmware directory is expected to be at the
+      # top-level. However, the kernel assumes firmware is in lib/firmware/. The
+      # kernel plugin will create the appropriate symlink for us.
+      lib/firmware: firmware/
+    override-stage: |
+      craftctl default
+
+      kver="$(basename "${CRAFT_STAGE}/lib/modules/"*)"
+
+      "${CRAFT_STAGE}/copy-firmware"            \
+        -m "${CRAFT_STAGE}/lib/modules/${kver}" \
+        -f "${CRAFT_STAGE}/lib/firmware"        \
+        "${CRAFT_STAGE}/tmp"
+    override-prime: |
+      cp -rf "${CRAFT_STAGE}/tmp/lib/firmware" "${CRAFT_PRIME}/firmware"
+
+  initrd:
+    after: [firmware, kernel]
+    plugin: initrd
+    initrd-build-efi-image: true
+
+  # Include the wl aka broadcom-sta kernel module. This module is not included
+  # in the standard kernel and as such must be built separately. Normally this
+  # would be through the broadcom-sta package, specifically the DKMS variant.
+  # Of course, Core doesn't not support DKMS, and so we have to do the dirty
+  # work manually.
+  wl:
+    after: [kernel]
+    plugin: nil
+    source: https://git.launchpad.net/ubuntu/+source/broadcom-sta
+    source-depth: 1
+    source-type: git
+    source-tag: applied/ubuntu/noble-proposed
+    build-packages: [build-essential, gcc, linux-headers-generic, make]
+    override-build: |
+      export kver="$(basename "${CRAFT_STAGE}/modules/"* | cut -f1 -d/)"
+
+      cp -f amd64/lib/wlc_hybrid.o_shipped amd64/lib/wlc_hybrid.o_amd64
+
+      # Directory is with respect to the Makefile in question, so it's up one more than you think
+      make KVER="${kver}" KBASE="${CRAFT_PART_BUILD}/../../kernel" -C amd64/
+
+      install -Dm644 amd64/wl.ko \
+        "${CRAFT_PART_INSTALL}/modules/${kver}/kernel/drivers/net/wireless/wl.ko"
+
+      craftctl set components.wl.version="${kver}"
+    organize:
+      "*": (component/wl)
+
+  facetimehd:
+    after: [kernel]
+    plugin: nil
+    source: https://github.com/patjak/facetimehd
+    source-depth: 1
+    source-type: git
+    source-tag: 0.6.13
+    override-build: |
+      export KVER="$(basename ${CRAFT_STAGE}/modules/* | cut -f1 -d/)"
+
+      make KVERSION="${KVER}" KDIR="${CRAFT_PART_BUILD}/../../kernel/build"
+
+      install -Dm644 "${CRAFT_PART_BUILD}/facetimehd.ko" \
+        "${CRAFT_PART_INSTALL}/modules/${KVER}/kernel/drivers/facetimehd.ko"
+
+      craftctl set components.facetimehd.version=0.6.13
+    organize:
+      "*": (component/facetimehd)
+
+  facetimehd-firmware:
+    after: [firmware]
+    plugin: nil
+    source: https://github.com/patjak/facetimehd-firmware
+    source-depth: 1
+    source-type: git
+    source-tag: v1.0.0
+    override-build: |
+      make all
+
+      make DESTDIR="${CRAFT_PART_INSTALL}" FW_DIR=firmware/facetimehd install
+    organize:
+      "*": (component/facetimehd)
+
+  # depmod to fix up the module information to include our wl driver
+  depmod:
+    after: [facetimehd, kernel, wl]
+    plugin: nil
+    build-packages: [kmod]
+    override-prime: |
+      # Collect all kernel and separately built modules
+      kver="$(basename "${CRAFT_STAGE}/modules/"* | cut -f1 -d/)"
+      craftctl default
+
+      depmod -b . "${kver}"
+
+components:
+  wl:
+    type: kernel-modules
+    adopt-info: wl
+    summary: WLAN driver for the Macbook Pro Broadcom WiFi card
+    description: |
+      A driver specifically crafted for a set of Broadcom chipsets available on
+      (primarily) Macbook Pros. The usage of this driver conflicts with other ones,
+      and as such care should be taken with respect to what device this kernel snap is
+      used with.
+  facetimehd:
+    type: kernel-modules
+    adopt-info: facetimehd
+    summary: A kernel module and associated firmware blob for the Macbook Pro webcam
+    description: |
+      A driver for using the integrated webcam in most Macbook Pros.
+      The firmware blob itself is extracted from official OSX images. Distribution is... Dubious.
