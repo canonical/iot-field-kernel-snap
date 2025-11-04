@@ -1,0 +1,78 @@
+/dts-v1/;
+
+/ {
+        description = "Ubuntu Core kernel, ramdisk, and FDT blobs";
+        #address-cells = <1>;
+
+        images {
+                kernel-ubuntu {
+                        description = "ubuntu-kernel";
+                        data = /incbin/("kernel.img");
+                        type = "kernel";
+                        arch = "riscv";
+                        os = "linux";
+                        compression = "none";
+                        load =  <0x0 0x40200000>;
+                        entry = <0x0 0x40200000>;
+						hash-1 {
+							algo = "sha256";
+						};
+                };
+
+                ramdisk-uc {
+                        description = "Ubuntu-Core-ramdisk";
+                        data = /incbin/("initrd.img");
+                        type = "ramdisk";
+                        arch = "riscv";
+                        os = "linux";
+                        compression = "none";
+                        load =  <0x0 0x46100000>;
+                        entry = <0x0 0x46100000>;
+                        hash-1 {
+                            algo = "sha256";
+                        };
+                };
+
+                fdt-visionfive2-1.2a {
+                        data = /incbin/("dtbs/starfive/jh7110-starfive-visionfive-2-v1.2a.dtb");
+                        type = "flat_dt";
+                        arch = "riscv";
+                        compression = "none";
+                        load =  <0x0 0x46000000>;
+                        entry = <0x0 0x46000000>;
+                        hash-1 {
+                            algo = "sha256";
+                        };
+                };
+
+                fdt-visionfive2-1.3b {
+                        data = /incbin/("dtbs/starfive/jh7110-starfive-visionfive-2-v1.3b.dtb");
+                        type = "flat_dt";
+                        arch = "riscv";
+                        compression = "none";
+                        load =  <0x0 0x46000000>;
+                        entry = <0x0 0x46000000>;
+                        hash-1 {
+                            algo = "sha256";
+                        };
+                };
+        };
+
+        configurations {
+                default = "jh7110-1.2a";
+
+                jh7110-1.2a {
+                        description = "visionfive2 rev 1.2a";
+						kernel = "kernel-ubuntu";
+                        ramdisk = "ramdisk-uc";
+                        fdt = "fdt-visionfive2-1.2a";
+                };
+
+                jh7110-1.3b {
+                        description = "visionfive2 rev 1.3b";
+						kernel = "kernel-ubuntu";
+                        ramdisk = "ramdisk-uc";
+                        fdt = "fdt-visionfive2-1.3b";
+                };
+        };
+};

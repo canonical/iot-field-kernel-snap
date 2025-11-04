@@ -36,7 +36,7 @@ confinement: strict
 
 platforms:
   riscv64:
-    build-on:  [amd64, riscv64]
+    build-on: [amd64, riscv64]
     build-for: [riscv64]
 
 package-repositories:
@@ -55,14 +55,11 @@ parts:
     source-type: git
     source-depth: 1
     source-branch: master
-    kernel-image-target:
-      riscv64: Image
     kernel-kconfigs:
       - CONFIG_SYSTEM_TRUSTED_KEYS=""
       - CONFIG_SYSTEM_REVOCATION_KEYS=""
     build-packages:
-      - on amd64 to riscv64:
-        - gcc-${CRAFT_ARCH_TRIPLET_BUILD_FOR}
+      - gcc-${CRAFT_ARCH_TRIPLET_BUILD_FOR}
     override-build: |
       craftctl default
 
@@ -75,42 +72,42 @@ parts:
       - lib/firmware
       - lib/modules
       - modules/
-      - kernel.img
+      - kernel.img*
     prime:
-      - dtbs/starfive
       - lib/firmware
       - lib/modules
       - modules/
 
-  # It's possible that this part could be consolidated into the kernel part
+  # Canonical's Kernel team maintains some scripts which can be useful for
+  # automatically removing unneeded firmware blobs.
   firmware:
     after: [kernel]
-    plugin: nil
+    plugin: dump
+    source: https://git.launchpad.net/canonical-kernel-snaps
+    source-depth: 1
+    source-type: git
     stage-packages:
       - linux-firmware:${CRAFT_ARCH_BUILD_FOR}
-      - wireless-regdb:all
+      - wireless-regdb
     organize:
+      # On Ubuntu Core, the firmware directory is expected to be at the
+      # top-level. However, the kernel assumes firmware is in lib/firmware/. The
+      # kernel plugin will create the appropriate symlink for us.
       lib/firmware: firmware/
       usr/share/doc/linux-firmware/licenses: licenses/
-    stage:
-      - firmware/
-      - licenses/
-    prime:
-      - firmware/
-      - licenses/
-      # Remove some firmware blobs to save a ton of space
-      - -firmware/amdgpu
-      - -firmware/brcm
-      - -firmware/i915
-      - -firmware/intel
-      - -firmware/iwlwifi*
-      - -firmware/liquidio
-      - -firmware/mellanox
-      - -firmware/mrvl
-      - -firmware/netronome
-      - -firmware/nvidia
-      - -firmware/qcom
-      - -firmware/qed
+    override-stage: |
+      craftctl default
+
+      kver="$(basename "${CRAFT_STAGE}/lib/modules/"*)"
+
+      "${CRAFT_STAGE}/copy-firmware"            \
+        -m "${CRAFT_STAGE}/lib/modules/${kver}" \
+        -f "${CRAFT_STAGE}/lib/firmware"        \
+        "${CRAFT_STAGE}/tmp"
+    override-prime: |
+      cp -rf "${CRAFT_STAGE}/licenses"         \
+             "${CRAFT_STAGE}/tmp/lib/firmware" \
+             "${CRAFT_PRIME}"
 
   # Make sure some important modules are in the initrd so the rootfs can be
   # mounted. Note that these could be optionally builtin to the kernel directly
@@ -118,6 +115,21 @@ parts:
   initrd:
     after: [firmware, kernel]
     plugin: initrd
-    initrd-build-efi-image: true
-    build-snaps: [core24/latest/stable]
-    initrd-configured-modules: [nls_iso8859-1, dw_mmc-starfive, dwmac_starfive]
+    initrd-modules: [nls_iso8859-1, dw_mmc-starfive, dwmac_starfive]
+    prime:
+      - manifest-initramfs.yaml*
+      - snapd-info
+
+  fit-image:
+    after: [kernel, initrd]
+    plugin: dump
+    source: fit-image/
+    build-packages: [device-tree-compiler, u-boot-tools]
+    override-stage: |
+      craftctl default
+
+      mkimage \
+        -f "${CRAFT_STAGE}/kernel_${CRAFT_ARCH_BUILD_FOR}.its" \
+        "${CRAFT_PRIME}/kernel.img"
+    prime:
+      - -*
