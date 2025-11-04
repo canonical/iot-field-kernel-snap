@@ -33,11 +33,13 @@ license: "GPL-2.0 AND GPL-3.0 AND CC-BY-SA-4.0"
 website: https://github.com/canonical/iot-field-kernel-snap
 issues: https://github.com/canonical/iot-field-kernel-snap/issues
 
+# Specifies that this snap can be cross-built.
 platforms:
   riscv64:
-    build-on:  [amd64]
+    build-on: [amd64, riscv64]
     build-for: [riscv64]
 
+# Required for gaining access to :riscv64 packages on amd64.
 package-repositories:
   - type: apt
     components: [main]
@@ -47,11 +49,13 @@ package-repositories:
     url: http://ports.ubuntu.com/ubuntu-ports
 
 plugs:
+  # This interface loads the WiFi driver, enabling WiFi early on.
+  # This interface is super-privileged and won't auto-connect.
   load-rt:
     interface: kernel-module-load
     modules:
-    - name: 8723ds
-      load: on-boot
+      - name: 8723ds
+        load: on-boot
 
 parts:
   # Provide the kernel.
@@ -62,7 +66,9 @@ parts:
     source: https://git.launchpad.net/~canonical-kernel/ubuntu/+source/linux-riscv/+git/noble
     source-depth: 1
     source-type: git
-    kernel-kconfigflavour: generic
+    # A lot of kernel options are disabled here; this dramatically shrinks
+    # kernel snap size with the tradeoff of making the snapcraft.yaml a bit
+    # more unwieldy.
     kernel-kconfigs:
       # Remove all unneeded DRM drivers
       - CONFIG_DRM_AMDGPU=n
@@ -517,27 +523,16 @@ parts:
       - CONFIG_RTW88_8723D=m
       - CONFIG_RTW88_8723DS=m
     build-packages:
-      - on riscv64:
-        - gcc
-      - on amd64:
-        - gcc-${CRAFT_ARCH_TRIPLET_BUILD_FOR}
-    stage-packages:
-      - linux-firmware:${CRAFT_ARCH_BUILD_FOR}
-      - wireless-regdb
+      - gcc-${CRAFT_ARCH_TRIPLET_BUILD_FOR}
     override-build: |
-      # Ensure the symlink the kernel plugin creates doesn't annihilate the
-      # firmware files This directory will exist because linux-firmware is
-      # unpacked before the plugin's default behavior runs
-      [ -e "${CRAFT_PART_INSTALL}/firmware" ] || {
-        mv -f "${CRAFT_PART_INSTALL}/lib/firmware" "${CRAFT_PART_INSTALL}/firmware"
-      }
-
       craftctl default
 
       kver="$(basename "${CRAFT_PART_INSTALL}/lib/modules/"*)"
 
-      # Set the version of the snap to match the kernel version.
+      # Programmatically generating version information makes maintenance easier
+      # Set the version of the snap and component to match the kernel version
       craftctl set version="$kver"
+      craftctl set components.wlan.version="$kver"
 
       # Organize does not respect variables set in an override build, so in
       # order to preserve the directory structure without manual intervention we
@@ -546,16 +541,17 @@ parts:
         install -Dm644 "$mod" "${CRAFT_COMPONENT_WLAN_PRIME}/${mod##*/install}"
       done
 
-      # Install the relevant license files
+      # Install some license files - never forget!
       install -Dm644 "${CRAFT_PART_SRC}/LICENSES/preferred/GPL-2.0" \
-                     "${CRAFT_PART_INSTALL}/LICENSE"
+                     "${CRAFT_PART_INSTALL}/licenses/kernel.license"
       install -Dm644 "${CRAFT_PART_SRC}/LICENSES/exceptions/Linux-syscall-note" \
-                     "${CRAFT_PART_INSTALL}/LICENSE.exception"
+                     "${CRAFT_PART_INSTALL}/licenses/kernel.license-exception"
     organize:
-      LICENSE: licenses/kernel.license
-      LICENSE.exception: licenses/kernel.license-exception
+      # dtbs are canonically at the top-level, but could be elsewhere
       dtbs/allwinner: dtbs/
+      # Organize the WiFi firmware alongside the WiFi driver
       firmware/rtw88/: (component/wlan)/firmware/rtw88/rtw8723d_fw.bin.zst
+    # Only some of the installed files are required during the build
     stage:
       - System.map-*
       - config-*
@@ -564,29 +560,49 @@ parts:
       - dtbs/sun20i-d1-lichee-rv-dock.dtb
       - dtbs/sun20i-d1-lichee-rv.dtb
       - dtbs/sun20i-d1-nezha.dtb
-      - kernel.img
-      - firmware/
+      - kernel.img*
       - lib/
       - licenses/
       - modules/
+    # Notably, the kernel.img* files are not primed; that is because they are
+    # provided by the FIT image part further below.
+    # If we opted to not use a FIT image, we would add kernel.img* to this section.
     prime:
-      - -kernel.img
+      - System.map-*
+      - config-*
+      - lib/
+      - licenses/
+      - modules/
 
   # Trimming any firmware we know a priori to not be needed by the target device
   # can reduce kernel snap size.
-  trim-firmware:
-    plugin: dump
+  # Canonical's Kernel team maintains some scripts which can be useful for
+  # automatically removing unneeded firmware blobs.
+  firmware:
     after: [kernel]
+    plugin: dump
     source: https://git.launchpad.net/canonical-kernel-snaps
     source-depth: 1
     source-type: git
-    stage:
-      - trim-firmware
-    override-prime: |
+    stage-packages:
+      - linux-firmware:${CRAFT_ARCH_BUILD_FOR}
+      - wireless-regdb
+    organize:
+      # On Ubuntu Core, the firmware directory is expected to be at the
+      # top-level. However, the kernel assumes firmware is in lib/firmware/. The
+      # kernel plugin will create the appropriate symlink for us.
+      lib/firmware: firmware/
+    override-stage: |
       craftctl default
-      "${CRAFT_STAGE}/trim-firmware" "${CRAFT_PRIME}"
-    prime:
-      - -*
+
+      kver="$(basename "${CRAFT_STAGE}/lib/modules/"*)"
+
+      "${CRAFT_STAGE}/copy-firmware"            \
+        -m "${CRAFT_STAGE}/lib/modules/${kver}" \
+        -f "${CRAFT_STAGE}/lib/firmware"        \
+        "${CRAFT_STAGE}/tmp"
+    override-prime: |
+      cp -rf "${CRAFT_STAGE}/tmp/lib/firmware" "${CRAFT_PRIME}/firmware"
 
   # Provide the initrd for Ubuntu Core.
   # The initrd includes important things such as snap-bootstrap which
@@ -594,20 +610,39 @@ parts:
   # for this tool can be found here:
   # https://github.com/snapcore/snapd/blob/master/cmd/snap-bootstrap/README.md
   initrd:
+    after: [firmware, kernel]
     plugin: initrd
-    after: [kernel]
-    initrd-build-efi-image: true
-    initrd-configured-modules: [8723ds, nls_iso8859-1, sunxi-mmc]
-    build-snaps: [core24/latest/stable]
+    # Here we ensure the kernel modules required for mounting the root
+    # filesystem are included in the initrd.
+    initrd-modules: [8723ds, nls_iso8859-1, sunxi-mmc]
     prime:
-      - -kernel.efi-*
+      - manifest-initramfs.yaml*
+      - snapd-info
 
+  fit-image:
+    after: [kernel, initrd]
+    plugin: dump
+    source: fit-image/
+    build-packages: [device-tree-compiler, u-boot-tools]
+    override-stage: |
+      craftctl default
+
+      mkimage \
+        -f "${CRAFT_STAGE}/kernel_${CRAFT_ARCH_BUILD_FOR}.its" \
+        "${CRAFT_PRIME}/kernel.img"
+    prime:
+      - -*
+
+# Because the Nezha board does not use this WiFi module but this kernel is
+# intended to support both the Nezha and the LicheeRV, we remove the "wasted
+# space" of a kernel module and its firmware from Nezha users of this snap. The
+# files aren't very large so the space saved is less useful than one would hope,
+# but it's a good practice to follow when the kernel snap could be used by a
+# variety of boards.
 components:
   wlan:
     type: kernel-modules
-    # It would be nice if the component version could be set by the kernel part.
-    # This version string may (probably will) fall out of sync.
-    version: 6.8.0-generic
+    adopt-info: kernel
     summary: The Realtek 8723ds WiFi module and firmware
     description: |
       The 8723ds Realtek WiFi kernel module used by the Sipeed LicheeRV. This
