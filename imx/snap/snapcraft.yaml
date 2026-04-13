@@ -58,11 +58,8 @@ parts:
     source: https://git.launchpad.net/~ondrak/ondras-snaps/+git/linux-kernel
     source-depth: 1
     source-type: git
-    source-branch: Ubuntu-imx-6.8.0-1006.9-snap
-    build-packages:
-      - on amd64:
-          - crossbuild-essential-${CRAFT_ARCH_BUILD_FOR}
-    kernel-kconfigflavour: imx
+    source-branch: Ubuntu-imx-6.18.0-1006.6
+    kernel-ubuntu-kconfigflavour: imx
     override-build: |
       craftctl default
 
@@ -75,11 +72,11 @@ parts:
             "${CRAFT_PART_INSTALL}/"
 
       "${CRAFT_PART_SRC}/prune-kernel-modules.sh" "${CRAFT_PART_INSTALL}" "${CRAFT_PART_SRC}/imx-keep.modules"
-    # override-stage: |
-    # craftctl default
+    override-stage: |
+      craftctl default
 
-    # keep only listed modules
-    # "${CRAFT_STAGE}/prune-kernel-modules.sh" "${CRAFT_STAGE}" "${CRAFT_STAGE}/imx-keep.modules"
+      # keep only listed modules
+      "${CRAFT_STAGE}/prune-kernel-modules.sh" "${CRAFT_STAGE}" "${CRAFT_STAGE}/imx-keep.modules"
     prime:
       - lib/
       - modules/
@@ -231,8 +228,7 @@ parts:
     source-type: git
     source-tag: lf-6.12.34-2.1.0
     source-depth: 1
-    build-packages:
-      [device-tree-compiler, python3-cryptography, python3-pyelftools]
+    build-packages: [device-tree-compiler, python3-cryptography, python3-pyelftools]
     build-environment:
       - ARCH: "arm"
       - CROSS_COMPILE: "${CRAFT_ARCH_TRIPLET_BUILD_FOR}-"

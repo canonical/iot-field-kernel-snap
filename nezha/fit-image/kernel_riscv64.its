@@ -12,8 +12,8 @@
 			arch = "riscv";
 			os = "linux";
 			compression = "none";
-			load =  <0x41000000>;
-			entry = <0x41000000>;
+			load =  <0x50000000>;
+			entry = <0x50000000>;
 
 			hash-1 {
 				algo = "sha256";
@@ -27,8 +27,8 @@
 			arch = "riscv";
 			os = "linux";
 			compression = "none";
-			load =  <0x43000000>;
-			entry = <0x43000000>;
+			load =  <0x54000000>;
+			entry = <0x54000000>;
 
 			hash-1 {
 				algo = "sha256";
@@ -41,8 +41,8 @@
 			type = "flat_dt";
 			arch = "riscv";
 			compression = "none";
-			load =  <0x44000000>;
-			entry = <0x44000000>;
+			load =  <0x54800000>;
+			entry = <0x54800000>;
 
 			hash-1 {
 				algo = "sha256";
@@ -55,8 +55,8 @@
 			type = "flat_dt";
 			arch = "riscv";
 			compression = "none";
-			load =  <0x44000000>;
-			entry = <0x44000000>;
+			load =  <0x54800000>;
+			entry = <0x54800000>;
 
 			hash-1 {
 				algo = "sha256";
@@ -69,8 +69,8 @@
 			type = "flat_dt";
 			arch = "riscv";
 			compression = "none";
-			load =  <0x44000000>;
-			entry = <0x44000000>;
+			load =  <0x54800000>;
+			entry = <0x54800000>;
 
 			hash-1 {
 				algo = "sha256";

@@ -49,10 +49,8 @@ parts:
   # Build the noble kernel
   kernel:
     plugin: kernel
-    source: https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/noble
-    source-depth: 1
-    source-type: git
-    source-branch: hwe-6.14-next
+    kernel-ubuntu-release-name: noble
+    kernel-ubuntu-abinumber: hwe-6.17-next
     kernel-kconfigs:
       # These aren't necessary
       - CONFIG_IKHEADERS=n
@@ -62,48 +60,25 @@ parts:
       - CONFIG_MODULE_SIG_KEY=""
       - CONFIG_SYSTEM_TRUSTED_KEYS=""
       - CONFIG_SYSTEM_REVOCATION_KEYS=""
+    stage-packages:
+      - linux-firmware:${CRAFT_ARCH_BUILD_FOR}
+      - wireless-regdb
     override-build: |
       craftctl default
 
       kver="$(basename "${CRAFT_PART_INSTALL}/lib/modules/"*)"
       craftctl set version="$kver"
     prime:
-      - lib/firmware/
+      - System.map-*
+      - config-*
+      - firmware/
+      - kernel.img*
+      - lib/firmware
       - lib/modules/
       - modules/
 
-  # Trimming any firmware we know a priori to not be needed by the target device
-  # can reduce kernel snap size.
-  # Canonical's Kernel team maintains some scripts which can be useful for
-  # automatically removing unneeded firmware blobs.
-  firmware:
-    after: [kernel]
-    plugin: dump
-    source: https://git.launchpad.net/canonical-kernel-snaps
-    source-depth: 1
-    source-type: git
-    stage-packages:
-      - linux-firmware:${CRAFT_ARCH_BUILD_FOR}
-      - wireless-regdb
-    organize:
-      # On Ubuntu Core, the firmware directory is expected to be at the
-      # top-level. However, the kernel assumes firmware is in lib/firmware/. The
-      # kernel plugin will create the appropriate symlink for us.
-      lib/firmware: firmware/
-    override-stage: |
-      craftctl default
-
-      kver="$(basename "${CRAFT_STAGE}/lib/modules/"*)"
-
-      "${CRAFT_STAGE}/copy-firmware"            \
-        -m "${CRAFT_STAGE}/lib/modules/${kver}" \
-        -f "${CRAFT_STAGE}/lib/firmware"        \
-        "${CRAFT_STAGE}/tmp"
-    override-prime: |
-      cp -rf "${CRAFT_STAGE}/tmp/lib/firmware" "${CRAFT_PRIME}/firmware"
-
   initrd:
-    after: [firmware, kernel]
+    after: [kernel]
     plugin: initrd
     initrd-build-efi-image: true
 
@@ -155,7 +130,6 @@ parts:
       "*": (component/facetimehd)
 
   facetimehd-firmware:
-    after: [firmware]
     plugin: nil
     source: https://github.com/patjak/facetimehd-firmware
     source-depth: 1
@@ -194,6 +168,6 @@ components:
     type: kernel-modules
     adopt-info: facetimehd
     summary: A kernel module and associated firmware blob for the Macbook Pro webcam
-    description: |
+    description: |-
       A driver for using the integrated webcam in most Macbook Pros.
       The firmware blob itself is extracted from official OSX images. Distribution is... Dubious.
