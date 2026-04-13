@@ -63,9 +63,9 @@ parts:
   # can reduce kernel snap size.
   kernel:
     plugin: kernel
-    source: https://git.launchpad.net/~canonical-kernel/ubuntu/+source/linux-riscv/+git/noble
-    source-depth: 1
-    source-type: git
+    kernel-ubuntu-release-name: noble
+    kernel-ubuntu-kconfigflavour: riscv
+    kernel-ubuntu-abinumber: riscv-6.17-next
     # A lot of kernel options are disabled here; this dramatically shrinks
     # kernel snap size with the tradeoff of making the snapcraft.yaml a bit
     # more unwieldy.
@@ -522,8 +522,11 @@ parts:
       - CONFIG_RTW88_SDIO=m
       - CONFIG_RTW88_8723D=m
       - CONFIG_RTW88_8723DS=m
-    build-packages:
-      - gcc-${CRAFT_ARCH_TRIPLET_BUILD_FOR}
+    build-environment:
+      - KERNEL_IMAGE: Image
+    stage-packages:
+      - linux-firmware:${CRAFT_ARCH_BUILD_FOR}
+      - wireless-regdb
     override-build: |
       craftctl default
 
@@ -532,6 +535,7 @@ parts:
       # Programmatically generating version information makes maintenance easier
       # Set the version of the snap and component to match the kernel version
       craftctl set version="$kver"
+      # Set the version of the wlan component to match the kernel version.
       craftctl set components.wlan.version="$kver"
 
       # Organize does not respect variables set in an override build, so in
@@ -561,18 +565,15 @@ parts:
       - dtbs/sun20i-d1-lichee-rv.dtb
       - dtbs/sun20i-d1-nezha.dtb
       - kernel.img*
+      - firmware/
       - lib/
       - licenses/
       - modules/
-    # Notably, the kernel.img* files are not primed; that is because they are
-    # provided by the FIT image part further below.
-    # If we opted to not use a FIT image, we would add kernel.img* to this section.
+      # Notably, the kernel.img* files are not primed; that is because they are
+      # provided by the FIT image part further below.
+      # If we opted to not use a FIT image, we would add kernel.img* to this section.
     prime:
-      - System.map-*
-      - config-*
-      - lib/
-      - licenses/
-      - modules/
+      - -kernel.img*
 
   # Trimming any firmware we know a priori to not be needed by the target device
   # can reduce kernel snap size.
@@ -612,12 +613,12 @@ parts:
   initrd:
     after: [firmware, kernel]
     plugin: initrd
-    # Here we ensure the kernel modules required for mounting the root
-    # filesystem are included in the initrd.
+    initrd-build-efi-image: false
     initrd-modules: [8723ds, nls_iso8859-1, sunxi-mmc]
     prime:
       - manifest-initramfs.yaml*
       - snapd-info
+      # - initrd.img*
 
   fit-image:
     after: [kernel, initrd]
@@ -642,9 +643,11 @@ parts:
 components:
   wlan:
     type: kernel-modules
+    # It would be nice if the component version could be set by the kernel part.
+    # This version string may (probably will) fall out of sync.
     adopt-info: kernel
     summary: The Realtek 8723ds WiFi module and firmware
-    description: |
+    description: |-
       The 8723ds Realtek WiFi kernel module used by the Sipeed LicheeRV. This
       module is useless on the Nezha board which also uses this kernel. To save
       on some small disk space, we package this module separately.
