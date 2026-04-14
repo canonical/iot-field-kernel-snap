@@ -68,6 +68,10 @@ parts:
 
       kver="$(basename "${CRAFT_PART_INSTALL}/lib/modules/"*)"
       craftctl set version="$kver"
+    override-prime: |
+      craftctl default
+
+      "${CRAFT_STAGE}/trim-firmware" "${CRAFT_PRIME}"
     prime:
       - System.map-*
       - config-*
@@ -76,6 +80,20 @@ parts:
       - lib/firmware
       - lib/modules/
       - modules/
+
+  # Trimming any firmware we know a priori to not be needed by the target device
+  # can reduce kernel snap size. Canonical's Kernel team maintains some scripts
+  # which can be useful for automatically removing unneeded firmware blobs.
+  # This part merely provides the relevant script and is unecessary at runtime.
+  trim-firmware:
+    after: [kernel]
+    plugin: dump
+    source: https://git.launchpad.net/canonical-kernel-snaps
+    source-depth: 1
+    source-type: git
+    source-branch: main
+    prime:
+      - -*
 
   initrd:
     after: [kernel]
