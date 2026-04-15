@@ -1,0 +1,90 @@
+# One reason for building your own kernel snap is to include out of tree
+# kernel modules. Sometimes extra modules are required for additional hardware
+# functionality. A common example would be a wireless card. There are a few
+# ways this can be done, but the simplest way is to build an out-of-tree
+# module. The most important thing when doing out-of-tree builds is to ensure
+# that the kernel source the module is built from is the same kernel source
+# as what was used to build the kernel image.
+
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# ! Canonical cannot provide support or offer maintenance for self-built kernels !
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+parts:
+  # You could do this when repacking a kernel deb; in that case the
+  # linux-headers packages matching that kernel image release should be
+  # sufficient.
+  # When building a kernel from source, directing the module's build system
+  # to that kernel source tree should likewise suffice. The variable names can
+  # vary, but standard practice is to use KDIR, KBASE, or KERNELDIR for the
+  # kernel source location, and KVER or KERNELVER for the kernel version.
+  # The module's Makefile will disambiguate.
+  module-foo:
+    after: [kernel]
+    plugin: nil
+    source: module-foo-source
+    build-packages:
+      - build-essential
+      # The name of the linux-headers debian package, if using kernel debs
+      - linux-headers-<platform>:${CRAFT_ARCH_BUILD_FOR}
+      - make
+      - gcc-${CRAFT_ARCH_TRIPLET_BUILD_FOR}
+    override-build: |
+      export kver="$(basename "${CRAFT_STAGE}/modules/"* | cut -f1 -d/)"
+
+      # Kernel directory is with respect to the Makefile's location
+      make KVER="${kver}" KBASE="${CRAFT_PART_BUILD}/../../kernel/"
+
+      install -Dm644 "${CRAFT_PART_BUILD}/mod.ko" \
+        "${CRAFT_PART_INSTALL}/modules/${kver}/kernel/drivers/further/path/if/needed/mod.ko"
+
+  # Sometimes additional firmware files are required for extra hardware to
+  # function. Generally, kernel builds don't involve building firmware blobs
+  # into kernel images. Instead, the firmware blobs are dynamically loaded on
+  # demand from disk. The usual search location for firmware blobs is /lib/firmware,
+  # though the device using the firmware might specify a different location.
+  # Refer to the firmware's documentation.
+  firmware-foo:
+    after: [firmware]
+    plugin: dump
+    source: firmware-foo-source
+    # Be sure to also stage any licenses!
+    stage:
+      # The name of the firmware blob.
+      - firmware.bin
+
+  # It's always important to make sure that the module information is accurate,
+  # especially when things like out-of-tree modules have been built. The depmod
+  # tool handles this process quite well. A separate part for this is only
+  # necessary if out of tree modules have been built; otherwise, the kernel
+  # plugin handles this.
+  depmod:
+    after: [module-foo, kernel]
+    plugin: nil
+    build-packages: [kmod]
+    override-prime: |
+      kver="$(basename "${CRAFT_STAGE}/modules/"* | cut -f1 -d/)"
+
+      depmod -b "${CRAFT_PRIME}" "${kver}"
+
+# Knowing how to load custom modules (and blacklist conflicting ones) is very
+# important. There are several ways to load kernel modules on Ubuntu Core
+# systems, but it come down to one of two interfaces:
+# kernel-module-load: https://snapcraft.io/docs/kernel-module-load-interface
+#   kernel-module-load allows specifying modules by name to either load on-boot
+#   or dynamically (via snapctl kmod) with optional arguments, and a list of
+#   modules to deny loading.
+# kernel-module-control: https://snapcraft.io/docs/kernel-module-control-interface
+#   kernel-module-control gives broad sweeping control over any and all kernel
+#   modules which can be loaded or unloaded.
+# kernel-module-load should always be preferred as it is a more targetted interface.
+# In order for this interface to autoconnect, a support ticket must be filed or
+# a forum post made.
+plugs:
+  load-module-foo:
+    interface: kernel-module-load
+    modules:
+    - name: module-foo
+      load: on-boot
+    - name: conflicting-module
+      load: denied

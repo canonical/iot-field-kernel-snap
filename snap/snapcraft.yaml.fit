@@ -1,0 +1,37 @@
+# On some platforms like arm64 or riscv64, it may be preferable to use
+# a flattened uImage tree (FIT) image. A FIT image can be built out of a
+# device-tree like file which declares some relevant files as nodes. A FIT
+# image allows combining a kernel image, an initrd, and device trees into a
+# single package to be loaded and booted by u-boot, and provides the useful
+# safety check of a checksum to ensure integrity! A skeleton is included
+# in the fit-image/ directory.
+# See the 22-riscv64-polarfire branch for an example:
+# https://github.com/canonical/iot-field-kernel-snap/blob/22-riscv64-polarfire/fit-image/fitImage-riscv64.its
+
+parts:
+  initrd:
+    after: [firmware, kernel]
+    # The initrd plugin handles the work of running ubuntu-core-initramfs
+    plugin: initrd
+    initrd-build-efi-image: false
+    initrd-modules: [bar, baz]
+    # You might want to include some extra things, such as a particular binary
+    # for something like OP-TEE or a firmware blob
+    initrd-addons:
+      - bin/foo
+      - lib/bar.so
+    initrd-firmware:
+      - baz.bin
+    # In the relevant kernel part, you would exclude files named 'kernel.img*'
+    prime:
+    - -*
+
+  fit-image:
+    after: [kernel, initrd]
+    plugin: nil
+    source: fit-image/
+    build-packages: [u-boot-tools, device-tree-compiler]
+    override-build: |
+      mkimage \
+        -f ${CRAFT_PART_SRC}/fitImage-${CRAFT_ARCH_BUILD_FOR}.its \
+        ${CRAFT_PART_INSTALL}/kernel.img

@@ -1,0 +1,47 @@
+# This snapcraft.yaml provides an example for building a kernel from source from
+# a Canonical-maintained upstream.
+# There are a couple reasons to want to build a kernel from source:
+#   * changing what features are built as modules versus builtin
+#   * patching a kernel to support a new feature
+#   * patching a kernel to support a whole platform
+# an optimal place for fetching the kernel sources is directly from Canonical.
+# This guarantees that the source has all the patches required for running
+# Ubuntu Core. Patches to support the new feature or platform can be applied
+# via an override-pull for this part.
+# Be aware that modifying kernel KCONFIG values can have drastic consequences
+# for the viability of a kernel.
+# See the 22-riscv64-nezha branch for an example:
+# https://github.com/canonical/iot-field-kernel-snap/blob/22-riscv64-nezha/snap/snapcraft.yaml
+
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# ! Canonical cannot provide support or offer maintenance for self-built kernels !
+# !  Kernels built from this source should not be used for commercial purposes   !
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+parts:
+  kernel:
+    plugin: kernel
+    # This option will fetch the official jammy kernel source tree from Launchpad
+    kernel-ubuntu-release-name: jammy
+    # This option will fetch a particular version tag
+    kernel-ubuntu-abinumber: Ubuntu-5.15.0-177.187
+    # Enable some kernel feature. Generally, the defaults the kernel plugin
+    # selects will be fine for most use-cases, as the default configuration is
+    # a generic configuration which attempts to target the broadest collection
+    # of hardware. Be careful when setting values here!
+    kernel-kconfigs:
+      - CONFIG_DEBUG_INFO_BTF=y
+    stage-packages:
+      - linux-firmware:${CRAFT_ARCH_BUILD_FOR}
+      - wireless-regdb
+      # DEBUG_INFO_BTF requires pahole
+      - pahole:${CRAFT_ARCH_BUILD_FOR}
+    override-build: |
+      # Build the kernel. The kernel plugin should do all of the correct things here.
+      craftctl default
+
+      # Using the directory name in the lib/modules directory captures the
+      # kernel version adequately.
+      kver="$(basename "${CRAFT_PART_INSTALL}/lib/modules/"*)"
+
+      craftctl set version="$kver"
