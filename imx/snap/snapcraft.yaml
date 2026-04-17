@@ -70,8 +70,6 @@ parts:
       cp -f "${CRAFT_PART_SRC}/imx-keep.modules"        \
             "${CRAFT_PART_SRC}/prune-kernel-modules.sh" \
             "${CRAFT_PART_INSTALL}/"
-
-      "${CRAFT_PART_SRC}/prune-kernel-modules.sh" "${CRAFT_PART_INSTALL}" "${CRAFT_PART_SRC}/imx-keep.modules"
     override-stage: |
       craftctl default
 
