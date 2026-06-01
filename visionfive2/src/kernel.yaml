@@ -1,0 +1,5 @@
+assets:
+  dtbs:
+    update: true
+    content:
+      - dtbs/

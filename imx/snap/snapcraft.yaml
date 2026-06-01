@@ -67,17 +67,10 @@ parts:
                              cut -c 12-42        |\
                              sed 's/-snap$//')
 
-      cp -f "${CRAFT_PART_SRC}/imx-keep.modules"        \
-            "${CRAFT_PART_SRC}/prune-kernel-modules.sh" \
-            "${CRAFT_PART_INSTALL}/"
-    override-stage: |
-      craftctl default
-
       # keep only listed modules
-      "${CRAFT_STAGE}/prune-kernel-modules.sh" "${CRAFT_STAGE}" "${CRAFT_STAGE}/imx-keep.modules"
+      "${CRAFT_PART_SRC}/prune-kernel-modules.sh" "${CRAFT_PART_INSTALL}" "${CRAFT_PART_SRC}/imx-keep.modules"
     prime:
-      - lib/
-      - modules/
+      - -vmlinuz*
 
   firmware:
     after: [kernel]
@@ -299,14 +292,12 @@ parts:
     plugin: dump
     source: fit-image/
     build-packages: [device-tree-compiler, u-boot-tools]
-    override-stage: |
+    override-stage: |-
       craftctl default
 
       # include key dir in case there are keys available
       mkimage \
         -f "${CRAFT_STAGE}/kernel_${CRAFT_ARCH_BUILD_FOR}.its" \
-        -r "${CRAFT_STAGE}/kernel.img"  \
+        -r "${CRAFT_STAGE}/vmlinuz"     \
         -k "${CRAFT_STAGE}/signing-key" \
            "${CRAFT_PRIME}/kernel.img"
-    prime:
-      - kernel.img
