@@ -109,3 +109,27 @@ parts:
     plugin: initrd
     initrd-build-efi-image: true
     initrd-modules: [nls_iso8859-1, dw_mmc-starfive, dwmac_starfive]
+    prime:
+      - manifest-initramfs.yaml*
+      - snapd-info
+
+  fit-image:
+    after: [kernel, initrd]
+    plugin: dump
+    source: fit-image/
+    build-packages: [device-tree-compiler, u-boot-tools]
+    override-stage: |
+      craftctl default
+
+      mkimage \
+        -f "${CRAFT_STAGE}/kernel_${CRAFT_ARCH_BUILD_FOR}.its" \
+        "${CRAFT_PRIME}/kernel.img"
+    prime:
+      - -*
+
+  # Snapcraft does not handle kernel.yaml files for us like it does gadget.yaml :'(
+  kernel-yaml:
+    plugin: dump
+    source: src/
+    override-prime: |-
+      install -Dm644 "${CRAFT_STAGE}/kernel.yaml" "${CRAFT_PRIME}/meta/kernel.yaml"

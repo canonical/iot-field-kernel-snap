@@ -63,7 +63,11 @@ parts:
   # can reduce kernel snap size.
   kernel:
     plugin: kernel
-    kernel-ubuntu-release-name: noble
+    source: https://git.launchpad.net/~canonical-kernel/ubuntu/+source/linux-riscv/+git/noble
+    source-depth: 1
+    source-type: git
+    source-branch: riscv-6.17-next
+    # kernel-ubuntu-release-name: noble
     kernel-ubuntu-kconfigflavour: riscv
     kernel-ubuntu-abinumber: riscv-6.17-next
     # A lot of kernel options are disabled here; this dramatically shrinks
@@ -564,16 +568,16 @@ parts:
       - dtbs/sun20i-d1-lichee-rv-dock.dtb
       - dtbs/sun20i-d1-lichee-rv.dtb
       - dtbs/sun20i-d1-nezha.dtb
-      - kernel.img*
       - firmware/
       - lib/
       - licenses/
       - modules/
-      # Notably, the kernel.img* files are not primed; that is because they are
-      # provided by the FIT image part further below.
-      # If we opted to not use a FIT image, we would add kernel.img* to this section.
+      - vmlinuz*
+      # Notably, the vmlinuz* files are not primed; that is because they are
+      # provided by the FIT image part further below. If we opted to not use a
+      # FIT image, we would remove this section.
     prime:
-      - -kernel.img*
+      - -vmlinuz*
 
   # Trimming any firmware we know a priori to not be needed by the target device
   # can reduce kernel snap size.

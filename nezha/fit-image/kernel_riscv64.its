@@ -7,7 +7,7 @@
 	images {
 		kernel-ubuntu {
 			description = "ubuntu-kernel";
-			data = /incbin/("kernel.img");
+			data = /incbin/("vmlinuz");
 			type = "kernel";
 			arch = "riscv";
 			os = "linux";
