@@ -53,7 +53,7 @@ parts:
     plugin: kernel
     kernel-ubuntu-release-name: noble
     kernel-ubuntu-kconfigflavour: riscv
-    kernel-ubuntu-abinumber: riscv-6.17-next
+    kernel-ubuntu-abinumber: Ubuntu-riscv-6.17-6.17.0-35.35.1_24.04.1
     kernel-kconfigs:
       - CONFIG_SYSTEM_TRUSTED_KEYS=""
       - CONFIG_SYSTEM_REVOCATION_KEYS=""
@@ -67,23 +67,18 @@ parts:
 
       # Set the version of the snap to match the kernel version.
       craftctl set version="${kver}"
-    organize:
-      dtbs/starfive: dtbs/
-    stage:
-      - System.map-*
-      - config-*
-      - dtbs/
-      - firmware/
-      - lib/firmware
-      - lib/modules
-      - modules/
-      - kernel.img*
+    # stage:
+    #   - System.map-*
+    #   - config-*
+    #   - dtbs/
+    #   - firmware/
+    #   - lib/firmware
+    #   - lib/modules
+    #   - modules/
+    #   - vmlinuz*
     prime:
-      - dtbs/
-      - firmware/
-      - lib/firmware
-      - lib/modules
-      - modules/
+      - -dtbs/
+      - -vmlinuz*
 
   # Trimming any firmware we know a priori to not be needed by the target device
   # can reduce kernel snap size.
@@ -107,7 +102,6 @@ parts:
   initrd:
     after: [kernel, trim-firmware]
     plugin: initrd
-    initrd-build-efi-image: true
     initrd-modules: [nls_iso8859-1, dw_mmc-starfive, dwmac_starfive]
     prime:
       - manifest-initramfs.yaml*
@@ -126,10 +120,3 @@ parts:
         "${CRAFT_PRIME}/kernel.img"
     prime:
       - -*
-
-  # Snapcraft does not handle kernel.yaml files for us like it does gadget.yaml :'(
-  kernel-yaml:
-    plugin: dump
-    source: src/
-    override-prime: |-
-      install -Dm644 "${CRAFT_STAGE}/kernel.yaml" "${CRAFT_PRIME}/meta/kernel.yaml"
