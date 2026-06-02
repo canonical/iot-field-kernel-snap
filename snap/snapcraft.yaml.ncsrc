@@ -2,8 +2,8 @@
 # target hardware (this is true of most ARM or RISC-V hardware, for instance).
 # In such a case, the board's upstream kernel should be used (frequently these
 # sources can be found in that manufacturer's BSP), or (if that manufacturer
-# has been dilligent and kind), kernel support may already exist in a more
-# recent version of the upstream kernel avaialble from https://github.com/torvalds/linux.
+# has been diligent and kind), kernel support may already exist in a more
+# recent version of the upstream kernel available from https://github.com/torvalds/linux.
 # In either case, additional patches will almost certainly be required in
 # order to gain some key functionality Ubuntu Core (and snaps more generally)
 # expect. It may one day be the case that no additional patches are required

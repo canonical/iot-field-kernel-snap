@@ -77,7 +77,7 @@ parts:
 # kernel-module-control: https://snapcraft.io/docs/kernel-module-control-interface
 #   kernel-module-control gives broad sweeping control over any and all kernel
 #   modules which can be loaded or unloaded.
-# kernel-module-load should always be preferred as it is a more targetted interface.
+# kernel-module-load should always be preferred as it is a more targeted interface.
 # In order for this interface to autoconnect, a support ticket must be filed or
 # a forum post made.
 plugs:
