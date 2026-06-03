@@ -49,11 +49,7 @@ parts:
   # Build the noble kernel
   kernel:
     plugin: kernel
-    source: https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/noble
-    source-depth: 1
-    source-type: git
-    source-branch: hwe-6.17-next
-    # kernel-ubuntu-release-name: noble
+    kernel-ubuntu-release-name: noble
     kernel-ubuntu-abinumber: hwe-6.17-next
     kernel-kconfigs:
       # These aren't necessary
