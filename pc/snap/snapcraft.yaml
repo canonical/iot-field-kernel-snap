@@ -76,10 +76,10 @@ parts:
       - System.map-*
       - config-*
       - firmware/
-      - kernel.img*
       - lib/firmware
       - lib/modules/
       - modules/
+      - vmlinuz*
 
   # Trimming any firmware we know a priori to not be needed by the target device
   # can reduce kernel snap size. Canonical's Kernel team maintains some scripts
